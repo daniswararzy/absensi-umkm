@@ -89,29 +89,3 @@ Frontend akan berjalan di `http://localhost:5173`
 1. Login dengan akun karyawan
 2. Lakukan absensi via face recognition
 3. Lihat riwayat kehadiran di dashboard personal
-
-## 🔗 Endpoints API
-
-Dokumentasi API akan ditambahkan di masa depan.
-
-## 📝 Catatan Pengembangan
-
-- Face Recognition module masih dalam tahap placeholder
-- Integrasi dengan database masih dalam pengembangan
-- Authentikasi belum fully implemented
-
-## 👨‍💻 Author
-
-**Dani Swara Rizky**
-
-## 📞 Support & Contribution
-
-Jika Anda menemukan bug atau ingin berkontribusi, silakan buat issue atau pull request.
-
-## 📄 License
-
-Project ini adalah private repository.
-
----
-
-**Last Updated:** April 27, 2026
