@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { MainLayout } from '../components/layout'
+import { MainLayout, ProtectedRoute } from '../components/layout'
 import AttendancePage from '../pages/AttendancePage'
 import DashboardPage from '../pages/DashboardPage'
 import EmployeeDashboardPage from '../pages/EmployeeDashboardPage'
@@ -16,17 +16,26 @@ function AppRoutes() {
       <Routes>
         <Route index element={<Navigate to="/login" replace />} />
         <Route path="login" element={<LoginPage />} />
-        <Route path="dashboard-pegawai" element={<EmployeeDashboardPage />} />
-        <Route path="absensi" element={<AttendancePage />} />
-        <Route element={<MainLayout />}>
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="pegawai" element={<EmployeesPage />} />
-          <Route path="pegawai/tambah" element={<EmployeeFormPage />} />
-          <Route path="pegawai/:employeeId/edit" element={<EmployeeFormPage />} />
-          <Route path="karyawan" element={<Navigate to="/pegawai" replace />} />
-          <Route path="registrasi-wajah" element={<FaceRegistrationPage />} />
-          <Route path="laporan" element={<ReportsPage />} />
+
+        {/* Admin routes — requires auth + role admin */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route element={<MainLayout />}>
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="pegawai" element={<EmployeesPage />} />
+            <Route path="pegawai/tambah" element={<EmployeeFormPage />} />
+            <Route path="pegawai/:employeeId/edit" element={<EmployeeFormPage />} />
+            <Route path="karyawan" element={<Navigate to="/pegawai" replace />} />
+            <Route path="registrasi-wajah" element={<FaceRegistrationPage />} />
+            <Route path="laporan" element={<ReportsPage />} />
+          </Route>
         </Route>
+
+        {/* Employee routes — requires auth + role pegawai */}
+        <Route element={<ProtectedRoute allowedRoles={['pegawai']} />}>
+          <Route path="dashboard-pegawai" element={<EmployeeDashboardPage />} />
+          <Route path="absensi" element={<AttendancePage />} />
+        </Route>
+
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

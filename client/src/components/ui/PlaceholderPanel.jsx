@@ -1,15 +1,17 @@
 import Card from './Card'
 
-function PlaceholderPanel({ title, description, items = [] }) {
+function PlaceholderPanel({ className = '', title, description, items = [] }) {
   return (
-    <Card className="placeholder-panel">
+    <Card className={`placeholder-panel ${className}`.trim()}>
       <div>
         <h3>{title}</h3>
         <p>{description}</p>
       </div>
       <ul>
         {items.map((item) => (
-          <li key={item}>{item}</li>
+          <li key={item}>
+            {item}
+          </li>
         ))}
       </ul>
     </Card>

@@ -13,7 +13,6 @@ function SettingsPage() {
     <>
       <PageHeader
         description="Pengaturan sistem disiapkan agar konfigurasi aplikasi tidak bercampur dengan halaman fitur."
-        eyebrow="Konfigurasi"
         status="Route aktif"
         title="Pengaturan aplikasi"
       />

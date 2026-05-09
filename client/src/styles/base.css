@@ -3,17 +3,23 @@
 }
 
 html {
+  width: 100%;
   min-width: 320px;
+  overflow-x: hidden;
   background: var(--color-page);
+  font-size: 16px;
 }
 
 body {
+  width: 100%;
   min-width: 320px;
   min-height: 100svh;
   margin: 0;
+  overflow-x: hidden;
   color: var(--color-text);
   background: var(--color-page);
   font-family: var(--font-sans);
+  line-height: 1.5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -24,11 +30,37 @@ button,
 input,
 textarea,
 select {
+  max-width: 100%;
   font: inherit;
 }
 
 a {
   color: inherit;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+img,
+video,
+canvas {
+  height: auto;
+}
+
+table {
+  max-width: 100%;
+}
+
+:where(main, section, article, header, footer, nav, aside, div) {
+  min-width: 0;
+}
+
+:where(h1, h2, h3, p, a, span, strong, small, label) {
+  overflow-wrap: anywhere;
 }
 
 h1,
@@ -43,13 +75,21 @@ h2,
 h3 {
   color: var(--color-heading);
   letter-spacing: 0;
+  line-height: 1.2;
 }
 
 p {
+  margin-bottom: 0;
   color: var(--color-text-muted);
   line-height: 1.65;
 }
 
+button {
+  color: inherit;
+}
+
 #root {
+  width: 100%;
   min-height: 100svh;
+  overflow-x: clip;
 }

@@ -1,6 +1,9 @@
+import { useId } from 'react'
 import Button from './Button'
 
-function Modal({ children, footer, isOpen, onClose, title }) {
+function Modal({ children, className = '', footer, isOpen, onClose, title }) {
+  const titleId = useId()
+
   if (!isOpen) {
     return null
   }
@@ -8,13 +11,13 @@ function Modal({ children, footer, isOpen, onClose, title }) {
   return (
     <div className="modal-backdrop" role="presentation">
       <section
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
         aria-modal="true"
-        className="ui-modal"
+        className={`ui-modal ${className}`.trim()}
         role="dialog"
       >
         <header className="ui-modal-header">
-          <h2 id="modal-title">{title}</h2>
+          <h2 id={titleId}>{title}</h2>
           <Button aria-label="Tutup modal" onClick={onClose} size="sm" variant="ghost">
             Tutup
           </Button>

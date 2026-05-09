@@ -1,80 +1,118 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button, Card, Input, StatusBadge } from '../components/ui'
-import { loginAccounts, prototypeFlow } from '../data/dummyData'
+import { LogIn } from 'lucide-react'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import absensikuLogo from '../assets/absensiku-logo.png'
+import { Button, Card, Input } from '../components/ui'
+import { useAuth } from '../contexts'
+import { loginAccounts } from '../data/dummyData'
 
 function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { isAuthenticated, login, user } = useAuth()
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('admin')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  function handleSubmit(event) {
+  // If already logged in, redirect to appropriate dashboard
+  if (isAuthenticated && user) {
+    const destination = user.role === 'admin' ? '/dashboard' : '/dashboard-pegawai'
+
+    return <Navigate to={destination} replace />
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault()
+    setErrorMessage('')
+    setIsSubmitting(true)
 
-    if (!username || !password) {
-      setErrorMessage('Silakan isi username dan password')
-      return
+    try {
+      const result = await login(username, password)
+      // Redirect to the originally intended page, or the role-based default
+      const from = location.state?.from?.pathname
+      const destination = from || result.redirectTo
+
+      navigate(destination, { replace: true })
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const account = loginAccounts.find(
-      (item) => item.username === username && item.password === password,
-    )
-
-    if (!account) {
-      setErrorMessage('Username atau password salah')
-      return
-    }
-
-    navigate(account.redirectTo)
   }
 
   return (
-    <main className="login-page">
-      <section className="login-hero">
-        <p className="eyebrow">Prototype PI</p>
-        <h1>Absensi UMKM berbasis face recognition</h1>
-        <p>
-          Alur frontend dibuat lengkap dengan dummy data agar bisa diuji dan
-          dipresentasikan sebelum integrasi backend.
-        </p>
-        <ol className="flow-list">
-          {prototypeFlow.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ol>
+    <main className="grid min-h-[100svh] grid-cols-1 items-center justify-items-center gap-4 bg-brand-page p-[var(--space-xl)_var(--page-gutter)] md:grid-cols-[minmax(0,0.95fr)_minmax(360px,440px)] md:justify-items-stretch md:gap-12 md:p-[48px_var(--page-gutter-desktop)]">
+      <section
+        className="grid w-full max-w-[430px] content-center gap-5 self-stretch rounded-[var(--radius-lg)] border border-brand-border bg-brand-white p-5 shadow-[var(--shadow-soft)] sm:p-6 md:min-h-[560px] md:max-w-[720px]"
+        aria-label="Informasi AbsensiKu"
+      >
+        <img
+          className="block max-h-[72px] w-full max-w-[240px] object-contain object-left md:max-h-[92px] md:max-w-[320px]"
+          src={absensikuLogo}
+          alt="AbsensiKu"
+        />
+        <div className="grid gap-3">
+          <h1 className="mb-0 max-w-[680px] text-[clamp(30px,8vw,42px)] leading-tight text-brand-brown md:text-[40px]">
+            Sistem Absensi Pegawai
+          </h1>
+          <p className="mb-0 max-w-[620px] text-[15px] text-brand-brown-muted md:text-[17px]">
+            Kelola kehadiran pegawai UMKM dengan proses absensi wajah yang sederhana.
+          </p>
+        </div>
       </section>
 
-      <Card
-        className="login-card"
-        description="Silakan masuk untuk mengelola sistem absensi pegawai"
-        title="Login Admin"
-      >
-        <form className="login-form" onSubmit={handleSubmit}>
-          <div className="login-badges">
-            {loginAccounts.map((account) => (
-              <StatusBadge key={account.role} tone="info">
-                {account.label}: {account.username} / {account.password}
-              </StatusBadge>
-            ))}
+      <section className="w-full max-w-[430px] md:max-w-[440px]" aria-label="Form login">
+        <Card
+          className="w-full max-w-[430px] border-brand-border-strong md:max-w-[440px]"
+          description="Masuk sebagai admin atau pegawai untuk melanjutkan alur prototype."
+          title="Selamat datang kembali"
+        >
+          <form className="grid gap-4" onSubmit={handleSubmit}>
+            <Input
+              id="admin-username"
+              label="Username"
+              onChange={(event) => setUsername(event.target.value)}
+              value={username}
+              disabled={isSubmitting}
+            />
+            <Input
+              id="admin-password"
+              label="Password"
+              onChange={(event) => setPassword(event.target.value)}
+              type="password"
+              value={password}
+              disabled={isSubmitting}
+            />
+            {errorMessage ? (
+              <p className="mb-0 rounded-[var(--radius-md)] border border-[#f4b8b0] bg-[var(--color-danger-soft)] px-3 py-2.5 text-sm font-bold text-[var(--color-danger)]">
+                {errorMessage}
+              </p>
+            ) : null}
+            <Button
+              icon={LogIn}
+              isLoading={isSubmitting}
+              loadingText="Memproses..."
+              type="submit"
+            >
+              Masuk
+            </Button>
+          </form>
+          <div className="mt-4 grid gap-1.5 rounded-[var(--radius-md)] border border-brand-border bg-brand-yellow-soft p-4">
+            <strong className="text-[13px] text-brand-brown">Akun demo</strong>
+            <div className="grid gap-1">
+              {loginAccounts.map((account) => (
+                <span
+                  className="text-xs font-semibold leading-snug text-brand-brown-muted"
+                  key={account.role}
+                >
+                  {account.label}: {account.username} / {account.password}
+                </span>
+              ))}
+            </div>
           </div>
-          <Input
-            id="admin-username"
-            label="Username"
-            onChange={(event) => setUsername(event.target.value)}
-            value={username}
-          />
-          <Input
-            id="admin-password"
-            label="Password"
-            onChange={(event) => setPassword(event.target.value)}
-            type="password"
-            value={password}
-          />
-          {errorMessage ? <p className="form-message error">{errorMessage}</p> : null}
-          <Button type="submit">Masuk</Button>
-        </form>
-      </Card>
+        </Card>
+      </section>
     </main>
   )
 }

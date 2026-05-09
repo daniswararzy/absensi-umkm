@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --color-brand-white: #ffffff;
+  --color-brand-page: #f6f4f1;
+  --color-brand-yellow: #f6c343;
+  --color-brand-yellow-soft: #fff4cc;
+  --color-brand-yellow-hover: #fff4cc;
+  --color-brand-yellow-active: #f6c343;
+  --color-brand-brown: #3a2418;
+  --color-brand-brown-body: #3f352d;
+  --color-brand-brown-muted: #7a7168;
+  --color-brand-border: #e6dfd7;
+  --color-brand-border-strong: #ead8ad;
+
+  --breakpoint-*: initial;
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 56.25rem;
+  --breakpoint-lg: 75rem;
+
+  --radius-flat: 0;
+  --radius-box: 0;
+  --shadow-flat: none;
+}

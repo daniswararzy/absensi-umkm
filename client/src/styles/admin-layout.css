@@ -1,29 +1,50 @@
 .admin-shell {
   display: grid;
-  grid-template-columns: 292px minmax(0, 1fr);
+  grid-template-columns: 1fr;
+  width: 100%;
+  max-width: 100%;
   min-height: 100svh;
+  overflow-x: hidden;
 }
 
 .admin-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 34px;
-  padding: 28px;
-  color: #ffffff;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: var(--space-md) var(--page-gutter);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-heading);
   background: var(--color-sidebar);
 }
 
 .brand-block {
   display: flex;
+  width: 100%;
+  min-width: 0;
   align-items: center;
   gap: 14px;
+  padding: 0 0 var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+}
+
+.brand-logo {
+  display: block;
+  width: min(190px, 100%);
+  max-height: 56px;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .brand-mark {
   display: grid;
-  flex: 0 0 46px;
-  width: 46px;
-  height: 46px;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
   place-items: center;
   border-radius: var(--radius-md);
   color: var(--color-primary-contrast);
@@ -34,9 +55,10 @@
 
 .brand-block h1 {
   margin-bottom: 0;
-  color: #ffffff;
-  font-size: 22px;
+  color: var(--color-heading);
+  font-size: 18px;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .eyebrow {
@@ -53,36 +75,80 @@
 }
 
 .admin-nav {
-  display: grid;
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-nav-link {
   display: grid;
-  gap: 3px;
-  min-height: 62px;
-  align-content: center;
+  flex: 0 0 min(156px, calc(100vw - (var(--page-gutter) * 2)));
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  align-items: center;
   padding: 12px;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  color: #f2e7dc;
+  color: var(--color-heading);
   text-decoration: none;
 }
 
-.admin-nav-link span {
+.admin-nav-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--color-primary-contrast);
+  background: var(--color-warning-soft);
+}
+
+.admin-nav-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.4;
+}
+
+.admin-nav-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.admin-nav-copy span {
   font-size: 15px;
   font-weight: 800;
 }
 
-.admin-nav-link small {
-  color: #d7c5b8;
+.admin-nav-copy small {
+  display: none;
+  color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.35;
 }
 
-.admin-nav-link.active,
 .admin-nav-link:hover {
+  border-color: #f1dca2;
+  color: var(--color-primary-contrast);
+  background: var(--color-primary-soft);
+}
+
+.admin-nav-link.active {
+  border-color: var(--color-primary);
   color: var(--color-primary-contrast);
   background: var(--color-primary);
+}
+
+.admin-nav-link.active .admin-nav-icon,
+.admin-nav-link:hover .admin-nav-icon {
+  background: rgba(58, 36, 24, 0.12);
 }
 
 .admin-nav-link.active small,
@@ -93,31 +159,39 @@
 .admin-workspace {
   display: grid;
   grid-template-rows: auto 1fr;
+  max-width: 100%;
   min-width: 0;
+  background: var(--color-page);
 }
 
 .admin-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  min-height: 82px;
-  padding: 18px 32px;
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  justify-items: start;
+  gap: var(--space-sm);
+  min-height: 72px;
+  padding: var(--space-md) var(--page-gutter);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
+  box-shadow: 0 1px 0 rgba(58, 36, 24, 0.04);
 }
 
 .admin-topbar strong {
   color: var(--color-heading);
   font-size: 18px;
+  overflow-wrap: anywhere;
 }
 
 .topbar-actions {
   display: flex;
   flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
   align-items: center;
   gap: 10px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .topbar-status {
@@ -127,7 +201,7 @@
   justify-content: center;
   padding: 7px 12px;
   border: 1px solid #f1d37a;
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   color: var(--color-primary-contrast);
   background: var(--color-primary-soft);
   font-size: 14px;
@@ -138,43 +212,76 @@
 .admin-content {
   display: grid;
   align-content: start;
-  gap: 24px;
-  padding: 32px;
+  width: 100%;
+  gap: var(--space-lg);
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  padding: var(--space-lg) var(--page-gutter);
 }
 
-@media (max-width: 980px) {
+.admin-content > * {
+  max-width: 100%;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
   .admin-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-sidebar {
-    gap: 20px;
-  }
-
-  .admin-nav {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
-
-  .admin-nav-link {
-    min-width: 152px;
-  }
-}
-
-@media (max-width: 720px) {
-  .admin-sidebar,
-  .admin-topbar,
-  .admin-content {
-    padding: 20px;
+    grid-template-columns: 280px minmax(0, 1fr);
   }
 
   .admin-topbar {
-    display: grid;
-    justify-items: start;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    padding: 18px 32px;
   }
 
   .topbar-actions {
-    justify-content: flex-start;
+    justify-content: flex-end;
+  }
+
+  .admin-sidebar {
+    gap: 34px;
+    padding: 28px;
+    border-right: 1px solid var(--color-border);
+    border-bottom: 0;
+  }
+
+  .brand-mark {
+    flex-basis: 46px;
+    width: 46px;
+    height: 46px;
+  }
+
+  .brand-block h1 {
+    font-size: 22px;
+  }
+
+  .brand-logo {
+    width: min(210px, 100%);
+    max-height: 62px;
+  }
+
+  .admin-nav {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+
+  .admin-nav-link {
+    flex-basis: auto;
+    min-width: 0;
+  }
+
+  .admin-nav-copy small {
+    display: block;
+  }
+
+  .admin-content {
+    gap: var(--space-xl);
+    padding: 32px var(--page-gutter-desktop);
   }
 }
