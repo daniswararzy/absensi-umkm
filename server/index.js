@@ -1,11 +1,9 @@
 /**
  * index.js — server entry point.
  *
- * Loads env vars, imports the app, and starts listening.
+ * Imports the app and starts listening.
  * This file does nothing else — all app config lives in src/app.js.
  */
-
-require('dotenv').config()
 
 const app = require('./src/app')
 const { env } = require('./src/config')

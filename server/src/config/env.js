@@ -1,25 +1,51 @@
 /**
  * env.js — centralized environment config.
  *
- * All env vars accessed from one place. Fail fast
- * if a required variable is missing.
+ * Loads server/.env from this config layer so every backend entrypoint
+ * reads the same environment values.
  */
 
+const path = require('path')
+const dotenv = require('dotenv')
+
+dotenv.config({
+  path: path.resolve(__dirname, '../../.env'),
+  quiet: true,
+})
+
+function readEnv(key) {
+  return (process.env[key] || '').trim()
+}
+
+const nodeEnv = readEnv('NODE_ENV') || 'development'
+const defaultClientUrls = ['http://localhost:5173', 'http://127.0.0.1:5173']
+const configuredClientUrls = readEnv('CLIENT_URL')
+  .split(',')
+  .map((url) => url.trim())
+  .filter(Boolean)
+const clientUrls = configuredClientUrls.length > 0
+  ? [
+      ...new Set(
+        nodeEnv === 'production'
+          ? configuredClientUrls
+          : [...configuredClientUrls, ...defaultClientUrls],
+      ),
+    ]
+  : defaultClientUrls
+
 const env = {
-  port: parseInt(process.env.PORT, 10) || 5050,
-  nodeEnv: process.env.NODE_ENV || 'development',
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  port: parseInt(readEnv('PORT'), 10) || 5050,
+  nodeEnv,
+  clientUrl: clientUrls[0],
+  clientUrls,
   jwt: {
-    secret: process.env.JWT_SECRET || 'absensi_umkm_dev_secret',
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    secret: readEnv('JWT_SECRET') || 'absensi_umkm_dev_secret',
+    expiresIn: readEnv('JWT_EXPIRES_IN') || '7d',
   },
-  // db: {
-  //   host: process.env.DB_HOST || 'localhost',
-  //   port: parseInt(process.env.DB_PORT, 10) || 3306,
-  //   user: process.env.DB_USER || 'root',
-  //   password: process.env.DB_PASSWORD || '',
-  //   name: process.env.DB_NAME || 'absensi_umkm',
-  // },
+  supabase: {
+    url: readEnv('SUPABASE_URL'),
+    serviceRoleKey: readEnv('SUPABASE_SERVICE_ROLE_KEY'),
+  },
 }
 
 module.exports = env

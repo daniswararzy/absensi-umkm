@@ -9,15 +9,20 @@
  */
 
 const { Router } = require('express')
+const authRoutes = require('./authRoutes')
+const attendanceRoutes = require('./attendanceRoutes')
+const faceRoutes = require('./faceRoutes')
 const healthRoutes = require('./healthRoutes')
+const pegawaiRoutes = require('./pegawaiRoutes')
+const laporanRoutes = require('./laporanRoutes')
 
 const router = Router()
 
+router.use('/api/auth', authRoutes)
+router.use('/api/attendance', attendanceRoutes)
+router.use('/api/face', faceRoutes)
 router.use('/api/health', healthRoutes)
-
-// ─── Future routes ──────────────────────────
-// router.use('/api/auth',       authRoutes)
-// router.use('/api/employees',  employeeRoutes)
-// router.use('/api/attendance', attendanceRoutes)
+router.use('/api/pegawai', pegawaiRoutes)
+router.use('/api/laporan', laporanRoutes)
 
 module.exports = router

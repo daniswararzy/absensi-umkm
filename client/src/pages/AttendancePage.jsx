@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import * as faceapi from 'face-api.js'
 import {
   ArrowLeft, CalendarDays, Camera, CheckCircle2, Clock3,
   LogIn, LogOut, RefreshCcw, ScanFace, XCircle,
@@ -7,13 +8,16 @@ import { Link } from 'react-router-dom'
 import { AlertBanner, Button, Card, Modal, Spinner, StatusBadge } from '../components/ui'
 import * as attendanceService from '../services/attendanceService'
 import * as faceService from '../services/faceService'
-import { employees } from '../data/dummyData'
 
-const employee = employees[0]
+const MODEL_URL = '/models'
 const attendanceTypes = [
   { icon: LogIn, label: 'Absensi Masuk' },
   { icon: LogOut, label: 'Absensi Pulang' },
 ]
+
+function stopStream(stream) {
+  stream?.getTracks().forEach((track) => track.stop())
+}
 
 function formatDate(date) {
   return date.toLocaleDateString('id-ID', {
@@ -28,14 +32,20 @@ function formatTime(date) {
 }
 
 function AttendancePage() {
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+
   const [attendanceType, setAttendanceType] = useState('Absensi Masuk')
   const [now, setNow] = useState(() => new Date())
 
   // Scan flow states
   const [scanPhase, setScanPhase] = useState('idle') // idle | scanning | success | error
   const [isScanning, setIsScanning] = useState(false)
+  const [isModelLoading, setIsModelLoading] = useState(true)
+  const [isCameraActive, setIsCameraActive] = useState(false)
   const [scanResult, setScanResult] = useState(null)
   const [scanError, setScanError] = useState('')
+  const [modelError, setModelError] = useState('')
 
   // Submit flow states
   const [showConfirm, setShowConfirm] = useState(false)
@@ -47,7 +57,78 @@ function AttendancePage() {
     return () => window.clearInterval(timer)
   }, [])
 
-  // Start scan — calls faceService.verifyFace
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadModels() {
+      setIsModelLoading(true)
+      setModelError('')
+
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ])
+      } catch (err) {
+        if (isCurrent) {
+          setModelError(err.message || 'Gagal memuat model face-api.js')
+        }
+      } finally {
+        if (isCurrent) {
+          setIsModelLoading(false)
+        }
+      }
+    }
+
+    loadModels()
+
+    return () => {
+      isCurrent = false
+      stopStream(streamRef.current)
+    }
+  }, [])
+
+  async function handleStartCamera() {
+    setScanError('')
+    setFeedback(null)
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setScanPhase('error')
+      setScanError('Browser tidak mendukung akses kamera')
+      return
+    }
+
+    try {
+      stopStream(streamRef.current)
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: 'user',
+          height: { ideal: 480 },
+          width: { ideal: 640 },
+        },
+      })
+
+      streamRef.current = stream
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+
+      setIsCameraActive(true)
+      setScanPhase('idle')
+      setScanResult(null)
+    } catch (err) {
+      setIsCameraActive(false)
+      setScanPhase('error')
+      setScanError(err.message || 'Gagal mengaktifkan kamera')
+    }
+  }
+
+  // Start scan — captures a descriptor and verifies it through the API.
   async function handleStartScan() {
     setIsScanning(true)
     setScanPhase('scanning')
@@ -56,13 +137,39 @@ function AttendancePage() {
     setFeedback(null)
 
     try {
-      const result = await faceService.verifyFace({ faceData: 'mock' })
+      if (isModelLoading || modelError) {
+        throw new Error(modelError || 'Model face-api.js masih dimuat')
+      }
+
+      if (!videoRef.current || !isCameraActive) {
+        throw new Error('Aktifkan kamera sebelum memulai scan')
+      }
+
+      const detection = await faceapi
+        .detectSingleFace(
+          videoRef.current,
+          new faceapi.TinyFaceDetectorOptions({
+            inputSize: 224,
+            scoreThreshold: 0.5,
+          }),
+        )
+        .withFaceLandmarks(true)
+        .withFaceDescriptor()
+
+      if (!detection) {
+        throw new Error('Wajah tidak terdeteksi. Hadapkan wajah ke kamera lalu coba lagi.')
+      }
+
+      const result = await faceService.verifyFace({
+        descriptor: Array.from(detection.descriptor),
+      })
+
       if (result.matched) {
         setScanResult(result)
         setScanPhase('success')
       } else {
         setScanPhase('error')
-        setScanError('Wajah tidak dikenali dalam sistem')
+        setScanError(result.message || 'Wajah tidak dikenali dalam sistem')
       }
     } catch (err) {
       setScanPhase('error')
@@ -91,7 +198,7 @@ function AttendancePage() {
 
     try {
       const payload = {
-        employeeId: scanResult?.employeeId || employee.id,
+        employeeId: scanResult?.employeeId,
         method: 'Face Recognition',
       }
 
@@ -103,7 +210,7 @@ function AttendancePage() {
 
       setFeedback({
         tone: 'success',
-        message: `${attendanceType} berhasil dicatat untuk ${scanResult?.employeeName || employee.name}`,
+        message: `${attendanceType} berhasil dicatat untuk ${scanResult?.employeeName || 'pegawai terverifikasi'}`,
       })
     } catch (err) {
       setFeedback({
@@ -120,6 +227,9 @@ function AttendancePage() {
     if (scanPhase === 'scanning') return 'Memproses data wajah...'
     if (scanPhase === 'success') return 'Wajah berhasil terdeteksi'
     if (scanPhase === 'error') return scanError || 'Wajah tidak dikenali'
+    if (modelError) return 'Model wajah gagal dimuat'
+    if (isModelLoading) return 'Memuat model wajah...'
+    if (!isCameraActive) return 'Kamera belum aktif'
     return 'Menunggu pemindaian wajah'
   }
 
@@ -197,24 +307,38 @@ function AttendancePage() {
       <section className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
         <Card className="border-[#f1d37a]" title="Area Scan Wajah">
           <div className="grid gap-[18px]">
-            <div className="grid min-h-[320px] place-items-center rounded-[var(--radius-md)] border-2 border-dashed border-brand-yellow bg-brand-yellow-soft md:min-h-[420px]" aria-label="Area Scan Wajah">
-              <div className="grid justify-items-center gap-2 p-4 text-center">
-                <div className="grid aspect-square w-[min(190px,62vw)] place-items-center rounded-[var(--radius-md)] border-[5px] border-brand-yellow bg-brand-white shadow-[var(--shadow-subtle)]" aria-hidden="true">
-                  {isScanning ? (
-                    <Spinner size="lg" label="Memindai wajah..." />
-                  ) : (
-                    <ScanFace className="h-[58px] w-[58px] stroke-[1.9] text-brand-brown" />
-                  )}
+            <div className="relative grid min-h-[320px] place-items-center overflow-hidden rounded-[var(--radius-md)] border-2 border-dashed border-brand-yellow bg-brand-yellow-soft md:min-h-[420px]" aria-label="Area Scan Wajah">
+              <video
+                aria-label="Pratinjau kamera absensi wajah"
+                autoPlay
+                className="h-full min-h-[320px] w-full object-cover md:min-h-[420px]"
+                muted
+                playsInline
+                ref={videoRef}
+              />
+              {!isCameraActive || isScanning ? (
+                <div className="absolute inset-0 grid place-items-center bg-brand-yellow-soft/95 p-4 text-center">
+                  <div className="grid justify-items-center gap-2">
+                    <div className="grid aspect-square w-[min(190px,62vw)] place-items-center rounded-[var(--radius-md)] border-[5px] border-brand-yellow bg-brand-white shadow-[var(--shadow-subtle)]" aria-hidden="true">
+                      {isScanning ? (
+                        <Spinner size="lg" label="Memindai wajah..." />
+                      ) : (
+                        <ScanFace className="h-[58px] w-[58px] stroke-[1.9] text-brand-brown" />
+                      )}
+                    </div>
+                    <strong className="text-xl text-brand-brown">
+                      {isScanning ? 'Memindai...' : 'Area Scan Wajah'}
+                    </strong>
+                    <span className="text-sm font-bold text-brand-brown-muted">{getScanStatusText()}</span>
+                  </div>
                 </div>
-                <strong className="text-xl text-brand-brown">
-                  {isScanning ? 'Memindai...' : 'Area Scan Wajah'}
-                </strong>
-                <span className="text-sm font-bold text-brand-brown-muted">{getScanStatusText()}</span>
-              </div>
+              ) : null}
             </div>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:flex md:flex-wrap md:justify-end">
-              <Button icon={Camera} disabled={isScanning || isSubmitting}>Mulai Kamera</Button>
-              <Button icon={ScanFace} isLoading={isScanning} loadingText="Memindai..." onClick={handleStartScan} variant="secondary" disabled={isSubmitting}>
+              <Button icon={Camera} onClick={handleStartCamera} disabled={isScanning || isSubmitting}>
+                Mulai Kamera
+              </Button>
+              <Button icon={ScanFace} isLoading={isScanning} loadingText="Memindai..." onClick={handleStartScan} variant="secondary" disabled={isSubmitting || isModelLoading}>
                 Mulai Scan
               </Button>
               {scanPhase === 'success' ? (
@@ -244,11 +368,11 @@ function AttendancePage() {
             <div className="grid grid-cols-1 gap-3">
               <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
                 <span className="text-[13px] font-extrabold text-brand-brown-muted">Nama Pegawai</span>
-                <strong className="text-base text-brand-brown">{verifiedEmployee?.name || (scanPhase === 'idle' ? '-' : employee.name)}</strong>
+                <strong className="text-base text-brand-brown">{verifiedEmployee?.name || '-'}</strong>
               </div>
               <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
                 <span className="text-[13px] font-extrabold text-brand-brown-muted">ID Pegawai</span>
-                <strong className="text-base text-brand-brown">{verifiedEmployee?.id || (scanPhase === 'idle' ? '-' : employee.id)}</strong>
+                <strong className="text-base text-brand-brown">{verifiedEmployee?.id || '-'}</strong>
               </div>
               <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
                 <span className="text-[13px] font-extrabold text-brand-brown-muted">Jenis Absensi</span>
@@ -305,7 +429,7 @@ function AttendancePage() {
       >
         <p>
           Simpan <strong>{attendanceType}</strong> untuk{' '}
-          <strong>{scanResult?.employeeName || employee.name}</strong>?
+          <strong>{scanResult?.employeeName || 'pegawai terverifikasi'}</strong>?
         </p>
       </Modal>
     </main>

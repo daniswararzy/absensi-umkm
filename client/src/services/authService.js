@@ -7,22 +7,16 @@
  *   - auth header helpers
  *
  * ──────────────────────────────────────────────
- * MOCK vs REAL API
+ * REAL API — connected to POST /api/auth/login
+ * and GET /api/auth/me on the Express backend.
  *
- * Currently uses mock implementations that validate
- * against dummyData. To switch to a real backend:
- *
- *   1. Replace login()  → call apiFetch('/api/auth/login', ...)
- *   2. Replace logout() → call apiFetch('/api/auth/logout', ...)
- *   3. Replace validateSession() → call apiFetch('/api/auth/me', ...)
- *
- * The function signatures stay the same, so AuthContext
- * and the rest of the app require zero changes.
+ * The function signatures are unchanged from mock,
+ * so AuthContext, LoginPage, and the rest of the app
+ * require zero changes.
  * ──────────────────────────────────────────────
  */
 
-import { loginAccounts } from '../data/dummyData'
-// import { apiFetch } from './apiClient'  // ← uncomment for real API
+import { apiFetch } from './apiClient'
 
 // ─── Session Storage ─────────────────────────
 
@@ -72,47 +66,30 @@ function clearSession() {
 /**
  * Authenticate a user with username and password.
  *
+ * Sends a POST request to /api/auth/login.
  * On success returns { user, token, redirectTo }.
  * On failure throws an Error with a user-facing message.
  *
  * @param {string} username
  * @param {string} password
  * @returns {Promise<{ user: object, token: string, redirectTo: string }>}
- *
- * ⚠️ MOCK — replace body with:
- *   const data = await apiFetch('/api/auth/login', {
- *     method: 'POST',
- *     body: { username, password },
- *     auth: false,
- *   })
- *   return { user: data.user, token: data.token, redirectTo: data.redirectTo }
  */
 async function login(username, password) {
-  // --- input validation (kept for both mock and real) ---
   if (!username || !password) {
     throw new Error('Silakan isi username dan password')
   }
 
-  // --- MOCK START ---
-  await simulateDelay()
+  const response = await apiFetch('/api/auth/login', {
+    method: 'POST',
+    body: { username, password },
+    auth: false,
+  })
 
-  const account = loginAccounts.find(
-    (item) => item.username === username && item.password === password,
-  )
-
-  if (!account) {
-    throw new Error('Username atau password salah')
+  return {
+    user: response.data.user,
+    token: response.data.token,
+    redirectTo: response.data.redirectTo,
   }
-
-  const token = `mock_${account.role}_${Date.now()}`
-  const user = {
-    username: account.username,
-    role: account.role,
-    label: account.label,
-  }
-
-  return { user, token, redirectTo: account.redirectTo }
-  // --- MOCK END ---
 }
 
 // ─── Logout ──────────────────────────────────
@@ -120,15 +97,12 @@ async function login(username, password) {
 /**
  * Log out the current user.
  *
- * Clears the local session. When connected to a real backend,
- * this should also call an API endpoint to invalidate the token.
- *
- * ⚠️ MOCK — add backend call:
- *   await apiFetch('/api/auth/logout', { method: 'POST' })
+ * Clears the local session. Backend does not have a
+ * logout endpoint yet (JWT is stateless), so we only
+ * clear client-side state.
  */
 async function logout() {
   clearSession()
-  // --- REAL API: await apiFetch('/api/auth/logout', { method: 'POST' }) ---
 }
 
 // ─── Session Validation ──────────────────────
@@ -136,13 +110,9 @@ async function logout() {
 /**
  * Validate the current stored session against the backend.
  *
- * Returns the validated session { user, token } if valid,
- * or null if the session is expired / invalid.
- *
- * ⚠️ MOCK — currently just trusts localStorage.
- * Replace with:
- *   const data = await apiFetch('/api/auth/me')
- *   return { user: data.user, token: getCurrentSession().token }
+ * Sends GET /api/auth/me with the stored token.
+ * If the token is valid, refreshes the user data from the server.
+ * If invalid or expired, clears the session and returns null.
  *
  * @returns {Promise<{ user: object, token: string } | null>}
  */
@@ -153,29 +123,17 @@ async function validateSession() {
     return null
   }
 
-  // --- MOCK: trust localStorage without server validation ---
-  return session
+  try {
+    const response = await apiFetch('/api/auth/me')
 
-  // --- REAL API ---
-  // try {
-  //   const data = await apiFetch('/api/auth/me')
-  //   return { user: data.user, token: session.token }
-  // } catch {
-  //   clearSession()
-  //   return null
-  // }
-}
+    // Refresh user data from server, keep existing token
+    return { user: response.data.user, token: session.token }
+  } catch {
+    // Token expired or invalid — clear and return null
+    clearSession()
 
-// ─── Helpers ─────────────────────────────────
-
-/**
- * Simulate network latency for mock operations (200–400ms).
- * Remove when using a real API.
- */
-function simulateDelay() {
-  const ms = 200 + Math.random() * 200
-
-  return new Promise((resolve) => setTimeout(resolve, ms))
+    return null
+  }
 }
 
 // ─── Public API ──────────────────────────────

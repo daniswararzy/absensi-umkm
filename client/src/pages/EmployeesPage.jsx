@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pencil, Trash2, UserPlus, UsersRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -57,6 +57,7 @@ const employeeColumns = (onDeleteClick) => [
 
 function EmployeesPage() {
   const [employees, setEmployees] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState(null)
@@ -91,6 +92,8 @@ function EmployeesPage() {
   }
 
   function handleDeleteCancel() {
+    if (isDeleting) return
+
     setDeleteTarget(null)
   }
 
@@ -103,13 +106,14 @@ function EmployeesPage() {
     try {
       await employeeService.deleteEmployee(deleteTarget.id)
 
+      setEmployees((current) =>
+        current.filter((employee) => employee.id !== deleteTarget.id),
+      )
       setFeedback({
         tone: 'success',
         message: `Data pegawai "${deleteTarget.name}" berhasil dihapus`,
       })
       setDeleteTarget(null)
-      // Refetch to reflect changes (mock won't actually remove, but flow is correct)
-      await fetchEmployees()
     } catch (err) {
       setFeedback({
         tone: 'error',
@@ -119,6 +123,25 @@ function EmployeesPage() {
       setIsDeleting(false)
     }
   }
+
+  const filteredEmployees = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase()
+
+    if (!query) {
+      return employees
+    }
+
+    return employees.filter((employee) => {
+      const searchable = [
+        employee.id,
+        employee.name,
+        employee.role,
+        employee.phone,
+      ].join(' ').toLowerCase()
+
+      return searchable.includes(query)
+    })
+  }, [employees, searchTerm])
 
   // Loading state
   if (isLoading) {
@@ -180,6 +203,14 @@ function EmployeesPage() {
         title="Data Pegawai"
       />
 
+      {error ? (
+        <AlertBanner
+          message={error}
+          onDismiss={() => setError('')}
+          tone="error"
+        />
+      ) : null}
+
       {/* Feedback banner */}
       {feedback ? (
         <AlertBanner
@@ -197,12 +228,14 @@ function EmployeesPage() {
           <Input
             id="employee-search"
             label="Cari Pegawai"
+            onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Cari nama pegawai..."
+            value={searchTerm}
           />
         </div>
         <Table
           columns={employeeColumns(handleDeleteClick)}
-          data={employees}
+          data={filteredEmployees}
           emptyMessage="Data pegawai tidak ditemukan"
           getRowKey={(row) => row.id}
         />

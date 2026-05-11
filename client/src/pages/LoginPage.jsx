@@ -4,7 +4,6 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import absensikuLogo from '../assets/absensiku-logo.png'
 import { Button, Card, Input } from '../components/ui'
 import { useAuth } from '../contexts'
-import { loginAccounts } from '../data/dummyData'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -101,14 +100,12 @@ function LoginPage() {
           <div className="mt-4 grid gap-1.5 rounded-[var(--radius-md)] border border-brand-border bg-brand-yellow-soft p-4">
             <strong className="text-[13px] text-brand-brown">Akun demo</strong>
             <div className="grid gap-1">
-              {loginAccounts.map((account) => (
-                <span
-                  className="text-xs font-semibold leading-snug text-brand-brown-muted"
-                  key={account.role}
-                >
-                  {account.label}: {account.username} / {account.password}
-                </span>
-              ))}
+              <span className="text-xs font-semibold leading-snug text-brand-brown-muted">
+                Admin: admin / admin
+              </span>
+              <span className="text-xs font-semibold leading-snug text-brand-brown-muted">
+                Pegawai: pegawai / pegawai
+              </span>
             </div>
           </div>
         </Card>

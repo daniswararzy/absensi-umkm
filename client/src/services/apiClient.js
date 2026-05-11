@@ -112,7 +112,17 @@ async function apiFetch(path, options = {}) {
     config.body = JSON.stringify(body)
   }
 
-  const response = await fetch(buildUrl(path), config)
+  let response
+
+  try {
+    response = await fetch(buildUrl(path), config)
+  } catch (err) {
+    throw new ApiError(
+      'Tidak bisa terhubung ke server API. Pastikan backend berjalan dan URL API benar.',
+      0,
+      { cause: err.message },
+    )
+  }
 
   // Try to parse JSON regardless of status (API may return error details)
   let data = null

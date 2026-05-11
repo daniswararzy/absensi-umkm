@@ -22,7 +22,7 @@
  */
 
 import { attendanceRecords as dummyRecords, attendanceReport as dummyReport } from '../data/dummyData'
-// import { apiFetch } from './apiClient'  // ← uncomment for real API
+import { apiFetch } from './apiClient'
 
 // ─── Helpers ─────────────────────────────────
 
@@ -110,19 +110,16 @@ async function getEmployeeAttendanceToday(employeeId) {
  *   return data.record
  */
 async function checkIn(payload) {
-  await simulateDelay(500)
+  const response = await apiFetch('/api/attendance/check-in', {
+    method: 'POST',
+    body: payload,
+  })
 
-  const now = new Date()
-
-  return {
-    id: `ABS-${Date.now()}`,
-    employeeId: payload.employeeId,
-    date: now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
-    checkIn: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-    checkOut: '-',
-    status: 'Hadir',
-    method: payload.method || 'Face Recognition',
+  if (!response?.success || !response.data?.record) {
+    throw new Error('Format response absensi tidak valid')
   }
+
+  return response.data.record
 }
 
 /**
@@ -139,16 +136,16 @@ async function checkIn(payload) {
  *   return data.record
  */
 async function checkOut(payload) {
-  await simulateDelay(500)
+  const response = await apiFetch('/api/attendance/check-out', {
+    method: 'POST',
+    body: payload,
+  })
 
-  const now = new Date()
-  const existing = dummyRecords.find((record) => record.employeeId === payload.employeeId)
-
-  return {
-    ...(existing || {}),
-    employeeId: payload.employeeId,
-    checkOut: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+  if (!response?.success || !response.data?.record) {
+    throw new Error('Format response absensi tidak valid')
   }
+
+  return response.data.record
 }
 
 // ─── Reports ─────────────────────────────────
@@ -165,6 +162,8 @@ async function checkOut(payload) {
  *   return data.report
  */
 async function getAttendanceReport(filters = {}) {
+  void filters
+
   await simulateDelay(400)
 
   // Mock: return static report data regardless of filters

@@ -22,6 +22,25 @@ const routes = require('./routes')
 const { errorHandler, notFound, requestLogger } = require('./middleware')
 
 const app = express()
+const DEV_LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1'])
+
+function isAllowedCorsOrigin(origin) {
+  if (!origin || env.clientUrls.includes(origin)) {
+    return true
+  }
+
+  if (env.nodeEnv === 'production') {
+    return false
+  }
+
+  try {
+    const { hostname } = new URL(origin)
+
+    return DEV_LOOPBACK_HOSTS.has(hostname)
+  } catch {
+    return false
+  }
+}
 
 // ─── Global Middleware ───────────────────────
 
@@ -29,7 +48,14 @@ app.use(requestLogger)
 
 app.use(
   cors({
-    origin: env.clientUrl,
+    origin(origin, callback) {
+      if (isAllowedCorsOrigin(origin)) {
+        callback(null, true)
+        return
+      }
+
+      callback(new Error('Origin tidak diizinkan oleh CORS'))
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

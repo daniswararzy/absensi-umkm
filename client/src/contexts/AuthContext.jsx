@@ -1,7 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as authService from '../services/authService'
-
-const AuthContext = createContext(null)
+import { AuthContext } from './authContext'
 
 /**
  * AuthProvider — wraps the app to provide auth state and actions.
@@ -72,18 +71,4 @@ function AuthProvider({ children }) {
   )
 }
 
-/**
- * useAuth — convenience hook to consume the auth context.
- * Must be used within an AuthProvider.
- */
-function useAuth() {
-  const context = useContext(AuthContext)
-
-  if (!context) {
-    throw new Error('useAuth harus digunakan di dalam AuthProvider')
-  }
-
-  return context
-}
-
-export { AuthContext, AuthProvider, useAuth }
+export { AuthProvider }
