@@ -11,9 +11,9 @@ function NotFoundPage() {
         </p>
         <Link
           className="mt-2.5 inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-brand-yellow px-3.5 py-2 font-extrabold text-brand-brown no-underline"
-          to="/dashboard"
+          to="/"
         >
-          Kembali ke dashboard
+          Ke halaman awal
         </Link>
       </section>
     </main>

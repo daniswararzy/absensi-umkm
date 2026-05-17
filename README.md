@@ -1,16 +1,15 @@
 # Absensi UMKM
 
-Sistem absensi berbasis **Face Recognition** untuk UMKM (Usaha Mikro, Kecil, dan Menengah). Aplikasi ini dirancang untuk mempermudah pencatatan kehadiran karyawan secara otomatis menggunakan teknologi deteksi wajah.
+Sistem absensi berbasis **Face Recognition** untuk UMKM (Usaha Mikro, Kecil, dan Menengah). Aplikasi ini dirancang untuk mempermudah pencatatan kehadiran pegawai secara otomatis menggunakan teknologi deteksi wajah.
 
 ## 🎯 Fitur Utama
 
-- ✅ **Face Recognition** - Absensi otomatis menggunakan deteksi wajah
-- 👥 **Manajemen Karyawan** - Kelola data dan profil karyawan
-- 📊 **Dashboard Admin** - Monitoring kehadiran real-time
-- 📈 **Laporan Absensi** - Generate laporan kehadiran per karyawan
-- 🎓 **Employee Dashboard** - Dashboard personal untuk karyawan
-- ⚙️ **Pengaturan Sistem** - Konfigurasi sistem absensi
-- 🔐 **Sistem Login** - Autentikasi aman untuk admin dan karyawan
+- **Face Recognition** - Absensi otomatis menggunakan deteksi wajah
+- **Manajemen Pegawai** - Kelola data dan profil pegawai
+- **Dashboard Admin** - Monitoring kehadiran real-time
+- **Laporan Absensi** - Generate laporan kehadiran per pegawai
+- **Absensi Pegawai Langsung** - Pegawai membuka `/absensi` dan scan wajah tanpa login
+- **Portal Admin** - Admin login melalui `/admin/login` untuk mengelola sistem
 
 ## 📁 Struktur Project
 
@@ -36,14 +35,17 @@ absensi_umkm/
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **React** - UI library
+- **React 19** - UI library
 - **Vite** - Build tool & dev server
-- **React Router** - Client-side routing
-- **CSS3** - Styling
+- **React Router DOM 7** - Client-side routing
+- **Tailwind CSS 4** - Styling
+- **face-api.js** - Deteksi dan descriptor wajah
 
 ### Backend
 - **Node.js** - Runtime environment
-- **Express** (assumed) - Web framework
+- **Express 5** - Web framework
+- **Supabase JS v2 / PostgreSQL** - Database layer
+- **JWT + bcrypt** - Autentikasi admin
 
 ## 🚀 Cara Setup
 
@@ -65,7 +67,7 @@ npm install
 npm start
 ```
 
-Server akan berjalan di `http://localhost:3000`
+Server akan berjalan di `http://localhost:5050`
 
 ### 3. Setup Frontend Client
 Buka terminal baru:
@@ -80,12 +82,31 @@ Frontend akan berjalan di `http://localhost:5173`
 ## 📖 Penggunaan
 
 ### Untuk Admin
-1. Login dengan akun admin
-2. Akses dashboard untuk monitoring kehadiran
-3. Kelola data karyawan
-4. Lihat laporan absensi
+1. Buka `/admin/login`
+2. Login dengan akun admin
+3. Akses dashboard untuk monitoring kehadiran
+4. Kelola data pegawai
+5. Lihat laporan absensi
 
-### Untuk Karyawan
-1. Login dengan akun karyawan
-2. Lakukan absensi via face recognition
-3. Lihat riwayat kehadiran di dashboard personal
+### Untuk Pegawai
+1. Buka aplikasi atau halaman `/absensi` tanpa login
+2. Pilih absensi masuk atau pulang
+3. Lakukan scan wajah untuk mencatat kehadiran
+
+## Route Utama
+
+- `/absensi` - halaman absensi pegawai, public, tanpa login
+- `/admin/login` - login admin
+- `/admin/dashboard` - dashboard admin, protected
+- `/admin/pegawai` - data pegawai, protected
+- `/admin/registrasi-wajah` - registrasi wajah, protected
+- `/admin/laporan` - laporan absensi, protected
+
+Legacy redirect:
+
+- `/` ke `/absensi`
+- `/login` ke `/admin/login`
+- `/dashboard` ke `/admin/dashboard`
+- `/pegawai` ke `/admin/pegawai`
+- `/registrasi-wajah` ke `/admin/registrasi-wajah`
+- `/laporan` ke `/admin/laporan`

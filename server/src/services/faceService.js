@@ -27,15 +27,92 @@ function normalizeEmployeeId(employeeId) {
 }
 
 function normalizeDescriptor(descriptor) {
-  if (!Array.isArray(descriptor) || descriptor.length !== DESCRIPTOR_LENGTH) {
-    throw createHttpError('Descriptor wajah tidak valid', 400)
+  if (!Array.isArray(descriptor)) {
+    throw createHttpError('Descriptor wajah harus berupa array JSON', 400)
   }
 
-  if (descriptor.some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
-    throw createHttpError('Descriptor wajah berisi nilai tidak valid', 400)
+  if (descriptor.length !== DESCRIPTOR_LENGTH) {
+    throw createHttpError(`Descriptor wajah harus berisi ${DESCRIPTOR_LENGTH} angka`, 400)
   }
 
-  return descriptor
+  return descriptor.map((value, index) => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw createHttpError(`Descriptor wajah berisi nilai tidak valid pada index ${index}`, 400)
+    }
+
+    return value
+  })
+}
+
+function normalizeThreshold(threshold) {
+  if (threshold === undefined || threshold === null || threshold === '') {
+    return DEFAULT_MATCH_THRESHOLD
+  }
+
+  const value = Number(threshold)
+
+  if (!Number.isFinite(value) || value <= 0 || value > DEFAULT_MATCH_THRESHOLD) {
+    throw createHttpError(
+      `Threshold wajah harus berupa angka lebih dari 0 dan maksimal ${DEFAULT_MATCH_THRESHOLD}`,
+      400,
+    )
+  }
+
+  return value
+}
+
+function parseStoredDescriptor(value) {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  try {
+    return normalizeDescriptor(JSON.parse(value))
+  } catch {
+    return null
+  }
+}
+
+function serializeDescriptor(descriptor) {
+  const normalizedDescriptor = normalizeDescriptor(descriptor)
+  const encodedDescriptor = JSON.stringify(normalizedDescriptor)
+
+  if (!parseStoredDescriptor(encodedDescriptor)) {
+    throw createHttpError('Descriptor wajah gagal dikonversi ke JSON valid', 400)
+  }
+
+  return {
+    encodedDescriptor,
+    normalizedDescriptor,
+  }
+}
+
+function assertValidRequestPayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw createHttpError('Payload registrasi wajah tidak valid', 400)
+  }
+}
+
+function assertSavedDescriptor(value) {
+  const savedDescriptor = parseStoredDescriptor(value)
+
+  if (!savedDescriptor) {
+    throw createHttpError('Data wajah tersimpan tidak valid', 500)
+  }
+
+  return savedDescriptor
+}
+
+function assertStoredDescriptorMatches(savedValue, expectedDescriptor) {
+  const savedDescriptor = assertSavedDescriptor(savedValue)
+
+  for (let index = 0; index < DESCRIPTOR_LENGTH; index += 1) {
+    if (savedDescriptor[index] !== expectedDescriptor[index]) {
+      throw createHttpError('Data wajah tersimpan tidak sesuai payload', 500)
+    }
+  }
+
+  return savedDescriptor
 }
 
 function mapFaceRows(rows = []) {
@@ -44,29 +121,18 @@ function mapFaceRows(rows = []) {
 
 function toFaceStatus(employee, faceMap) {
   const faceData = faceMap.get(employee.id)
+  const hasValidDescriptor = Boolean(
+    faceData?.status === 'Terdaftar' && parseStoredDescriptor(faceData.face_encoding),
+  )
 
   return {
     id: employee.id,
     name: employee.nama,
     role: employee.jabatan,
-    faceStatus: faceData?.status || 'Belum',
-    registeredAt: faceData?.updated_at || faceData?.created_at || null,
-  }
-}
-
-function parseStoredDescriptor(value) {
-  try {
-    const parsed = JSON.parse(value)
-
-    if (!Array.isArray(parsed) || parsed.length !== DESCRIPTOR_LENGTH) {
-      return null
-    }
-
-    return parsed.every((item) => typeof item === 'number' && Number.isFinite(item))
-      ? parsed
-      : null
-  } catch {
-    return null
+    faceStatus: hasValidDescriptor ? 'Terdaftar' : 'Belum',
+    registeredAt: hasValidDescriptor
+      ? faceData.updated_at || faceData.created_at || null
+      : null,
   }
 }
 
@@ -98,13 +164,23 @@ async function ensureEmployeeExists(employeeId) {
 async function verifyFace(payload = {}) {
   requireSupabase()
 
+  const expectedEmployeeId = payload.employeeId
+    ? normalizeEmployeeId(payload.employeeId)
+    : ''
   const descriptor = normalizeDescriptor(payload.descriptor)
-  const threshold = Number(payload.threshold) || DEFAULT_MATCH_THRESHOLD
+  const threshold = normalizeThreshold(payload.threshold)
 
-  const { data: faceRows, error: faceError } = await supabase
+  let faceQuery = supabase
     .from('data_wajah')
     .select('pegawai_id, face_encoding, status')
     .eq('status', 'Terdaftar')
+
+  if (expectedEmployeeId) {
+    await ensureEmployeeExists(expectedEmployeeId)
+    faceQuery = faceQuery.eq('pegawai_id', expectedEmployeeId)
+  }
+
+  const { data: faceRows, error: faceError } = await faceQuery
 
   if (faceError) {
     throw createHttpError('Gagal mengambil data wajah', 500)
@@ -120,7 +196,10 @@ async function verifyFace(payload = {}) {
   if (candidates.length === 0) {
     return {
       matched: false,
-      message: 'Belum ada data wajah valid yang terdaftar',
+      message: expectedEmployeeId
+        ? 'Data wajah pegawai belum terdaftar'
+        : 'Belum ada data wajah valid yang terdaftar',
+      reason: 'not_registered',
       threshold,
     }
   }
@@ -140,6 +219,7 @@ async function verifyFace(payload = {}) {
       matched: false,
       distance: bestMatch?.distance ?? null,
       message: 'Wajah tidak cocok dengan data pegawai',
+      reason: 'not_matched',
       threshold,
     }
   }
@@ -156,6 +236,7 @@ async function verifyFace(payload = {}) {
     employeeId: employee.id,
     employeeName: employee.nama,
     distance: bestMatch.distance,
+    reason: 'matched',
     threshold,
   }
 }
@@ -174,7 +255,7 @@ async function getRegistrationStatus() {
 
   const { data: faceRows, error: faceError } = await supabase
     .from('data_wajah')
-    .select('pegawai_id, status, created_at, updated_at')
+    .select('pegawai_id, face_encoding, status, created_at, updated_at')
 
   if (faceError) {
     throw createHttpError('Gagal mengambil status data wajah', 500)
@@ -193,7 +274,7 @@ async function getEmployeeFaceStatus(employeeId) {
 
   const { data, error } = await supabase
     .from('data_wajah')
-    .select('pegawai_id, status, created_at, updated_at')
+    .select('pegawai_id, face_encoding, status, created_at, updated_at')
     .eq('pegawai_id', normalizedEmployeeId)
     .maybeSingle()
 
@@ -205,9 +286,10 @@ async function getEmployeeFaceStatus(employeeId) {
 }
 
 async function registerFace(payload = {}) {
-  const requestPayload = payload && typeof payload === 'object' ? payload : {}
-  const employeeId = normalizeEmployeeId(requestPayload.employeeId)
-  const descriptor = normalizeDescriptor(requestPayload.descriptor)
+  assertValidRequestPayload(payload)
+
+  const employeeId = normalizeEmployeeId(payload.employeeId)
+  const { encodedDescriptor, normalizedDescriptor } = serializeDescriptor(payload.descriptor)
 
   requireSupabase()
 
@@ -219,7 +301,7 @@ async function registerFace(payload = {}) {
     .upsert(
       {
         pegawai_id: employeeId,
-        face_encoding: JSON.stringify(descriptor),
+        face_encoding: encodedDescriptor,
         status: 'Terdaftar',
         updated_at: now,
       },
@@ -232,14 +314,14 @@ async function registerFace(payload = {}) {
     throw createHttpError('Gagal menyimpan data wajah', 500)
   }
 
-  const savedDescriptor = parseStoredDescriptor(data.face_encoding)
-
-  if (!savedDescriptor) {
-    throw createHttpError('Data wajah tersimpan tidak valid', 500)
-  }
+  const savedDescriptor = assertStoredDescriptorMatches(
+    data.face_encoding,
+    normalizedDescriptor,
+  )
 
   return {
     employee: toFaceStatus(employee, mapFaceRows([data])),
+    descriptorFormat: 'json-array',
     descriptorLength: savedDescriptor.length,
     message: `Data wajah ${employee.nama} berhasil disimpan`,
   }

@@ -62,6 +62,30 @@ function normalizeDescriptor(value) {
   return normalized
 }
 
+function getErrorMessage(err, fallback) {
+  if (err?.status === 0) {
+    return 'Tidak bisa terhubung ke server API. Pastikan backend berjalan lalu coba lagi.'
+  }
+
+  return err?.message || fallback
+}
+
+function getCameraErrorMessage(err) {
+  if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
+    return 'Izin kamera ditolak. Izinkan akses kamera di browser lalu coba lagi.'
+  }
+
+  if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+    return 'Kamera tidak ditemukan. Sambungkan kamera lalu coba lagi.'
+  }
+
+  if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+    return 'Kamera sedang dipakai aplikasi lain. Tutup aplikasi tersebut lalu coba lagi.'
+  }
+
+  return getErrorMessage(err, 'Gagal mengaktifkan kamera')
+}
+
 function FaceRegistrationPage() {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -72,6 +96,7 @@ function FaceRegistrationPage() {
   const [isModelLoading, setIsModelLoading] = useState(true)
   const [modelError, setModelError] = useState('')
   const [isCameraActive, setIsCameraActive] = useState(false)
+  const [isStartingCamera, setIsStartingCamera] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [descriptor, setDescriptor] = useState(null)
@@ -92,7 +117,7 @@ function FaceRegistrationPage() {
     } catch (err) {
       setFeedback({
         tone: 'error',
-        message: err.message || 'Gagal memuat data registrasi wajah',
+        message: getErrorMessage(err, 'Gagal memuat data registrasi wajah'),
       })
     } finally {
       setIsLoading(false)
@@ -114,7 +139,10 @@ function FaceRegistrationPage() {
         ])
       } catch (err) {
         if (isCurrent) {
-          setModelError(err.message || 'Gagal memuat model face-api.js')
+          const message = getErrorMessage(err, 'Gagal memuat model face-api.js')
+
+          setModelError(message)
+          setFeedback({ tone: 'error', message })
         }
       } finally {
         if (isCurrent) {
@@ -143,6 +171,8 @@ function FaceRegistrationPage() {
       return
     }
 
+    setIsStartingCamera(true)
+
     try {
       stopStream(streamRef.current)
 
@@ -167,14 +197,16 @@ function FaceRegistrationPage() {
       setDetectionScore(null)
       setFeedback({
         tone: 'success',
-        message: 'Kamera aktif',
+        message: 'Kamera aktif. Lanjutkan dengan ambil wajah.',
       })
     } catch (err) {
       setIsCameraActive(false)
       setFeedback({
         tone: 'error',
-        message: err.message || 'Gagal mengaktifkan kamera',
+        message: getCameraErrorMessage(err),
       })
+    } finally {
+      setIsStartingCamera(false)
     }
   }
 
@@ -227,12 +259,12 @@ function FaceRegistrationPage() {
       setDetectionScore(detection.detection.score)
       setFeedback({
         tone: 'success',
-        message: 'Descriptor wajah berhasil diambil',
+        message: `Wajah terdeteksi. Descriptor siap disimpan untuk ${selectedEmployee?.name || 'pegawai terpilih'}.`,
       })
     } catch (err) {
       setFeedback({
         tone: 'error',
-        message: err.message || 'Gagal mengambil descriptor wajah',
+        message: getErrorMessage(err, 'Gagal mengambil descriptor wajah'),
       })
     } finally {
       setIsCapturing(false)
@@ -275,12 +307,14 @@ function FaceRegistrationPage() {
       )
       setFeedback({
         tone: 'success',
-        message: result.message || 'Data wajah berhasil disimpan',
+        message: result.message
+          ? `${result.message}. Data siap diuji di absensi.`
+          : 'Data wajah berhasil disimpan. Data siap diuji di absensi.',
       })
     } catch (err) {
       setFeedback({
         tone: 'error',
-        message: err.message || 'Gagal menyimpan data wajah',
+        message: getErrorMessage(err, 'Gagal menyimpan data wajah'),
       })
     } finally {
       setIsSaving(false)
@@ -307,11 +341,11 @@ function FaceRegistrationPage() {
     },
     {
       label: 'Kamera',
-      status: isCameraActive ? 'Aktif' : 'Belum',
+      status: isStartingCamera ? 'Memuat' : isCameraActive ? 'Aktif' : 'Belum',
     },
     {
       label: 'Descriptor wajah',
-      status: descriptor ? 'Terdeteksi' : 'Belum',
+      status: isCapturing ? 'Memuat' : descriptor ? 'Terdeteksi' : 'Belum',
     },
     {
       label: 'Pegawai terpilih',
@@ -381,14 +415,16 @@ function FaceRegistrationPage() {
             </div>
             <div className="grid grid-cols-1 gap-2.5 sm:flex sm:flex-wrap">
               <Button
-                disabled={isSaving}
+                disabled={isCapturing || isSaving}
                 icon={Camera}
+                isLoading={isStartingCamera}
+                loadingText="Mengaktifkan..."
                 onClick={handleStartCamera}
               >
                 Mulai Kamera
               </Button>
               <Button
-                disabled={isSaving || isModelLoading}
+                disabled={isStartingCamera || isSaving || isModelLoading}
                 icon={ScanFace}
                 isLoading={isCapturing}
                 loadingText="Mengambil..."
@@ -398,7 +434,7 @@ function FaceRegistrationPage() {
                 Ambil Wajah
               </Button>
               <Button
-                disabled={!descriptor}
+                disabled={!descriptor || isCapturing || isStartingCamera}
                 icon={Save}
                 isLoading={isSaving}
                 loadingText="Menyimpan..."
@@ -428,7 +464,7 @@ function FaceRegistrationPage() {
               <span className="ui-field-label">Pilih Pegawai</span>
               <select
                 className="ui-input"
-                disabled={isSaving}
+                disabled={isCapturing || isSaving || isStartingCamera}
                 id="face-employee"
                 onChange={handleEmployeeChange}
                 value={selectedEmployeeId}

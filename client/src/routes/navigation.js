@@ -8,33 +8,33 @@ import {
 
 export const navigationItems = [
   {
-    label: 'Dashboard',
-    path: '/dashboard',
-    description: 'Ringkasan absensi',
+    label: 'Dashboard Admin',
+    path: '/admin/dashboard',
+    description: 'Ringkasan absensi pegawai',
     icon: LayoutDashboard,
   },
   {
     label: 'Data Pegawai',
-    path: '/pegawai',
+    path: '/admin/pegawai',
     description: 'Master data pegawai',
     icon: UsersRound,
   },
   {
     label: 'Registrasi Wajah',
-    path: '/registrasi-wajah',
+    path: '/admin/registrasi-wajah',
     description: 'Perekaman wajah',
     icon: ScanFace,
   },
   {
     label: 'Laporan Kehadiran',
-    path: '/laporan',
+    path: '/admin/laporan',
     description: 'Rekap kehadiran',
     icon: ClipboardList,
   },
   {
-    label: 'Keluar',
-    path: '/login',
-    description: 'Keluar sistem',
+    label: 'Keluar Admin',
+    path: '/admin/login',
+    description: 'Akhiri sesi admin',
     icon: LogOut,
   },
 ]

@@ -8,18 +8,18 @@ function Sidebar() {
   const { logout } = useAuth()
 
   function handleNavClick(event, item) {
-    // Intercept the "Keluar" nav item to perform logout
-    if (item.path === '/login') {
+    // Intercept the admin logout nav item to clear the session.
+    if (item.path === '/admin/login') {
       event.preventDefault()
       logout()
-      navigate('/login', { replace: true })
+      navigate('/admin/login', { replace: true })
     }
   }
 
   return (
     <aside
       className="flex w-full max-w-[100vw] min-w-0 flex-col gap-4 overflow-x-hidden border-b border-brand-border bg-brand-white p-[var(--space-md)_var(--page-gutter)] text-brand-brown md:gap-[34px] md:border-b-0 md:border-r md:p-7"
-      aria-label="Navigasi admin"
+      aria-label="Navigasi panel admin"
     >
       <div className="flex w-full min-w-0 items-center gap-[14px] border-b border-brand-border bg-transparent pb-4">
         <img

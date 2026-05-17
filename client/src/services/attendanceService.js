@@ -30,6 +30,80 @@ function simulateDelay(ms = 300) {
   return new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 200))
 }
 
+function createServiceError(error, message) {
+  const nextError = new Error(message)
+
+  nextError.status = error?.status
+  nextError.data = error?.data
+
+  return nextError
+}
+
+function getAttendanceErrorMessage(error) {
+  if (error?.status === 0) {
+    return 'Koneksi bermasalah atau server tidak merespons. Silakan coba lagi.'
+  }
+
+  const message = error?.message || ''
+  const normalizedMessage = message.toLowerCase()
+
+  if (normalizedMessage.includes('sudah melakukan absensi masuk')) {
+    return 'Anda sudah melakukan absensi masuk hari ini.'
+  }
+
+  if (
+    normalizedMessage.includes('sebelum absensi masuk')
+    || normalizedMessage.includes('belum absensi masuk')
+  ) {
+    return 'Absensi pulang belum dapat dilakukan karena absensi masuk belum tercatat.'
+  }
+
+  if (normalizedMessage.includes('sudah melakukan absensi pulang')) {
+    return 'Anda sudah melakukan absensi pulang hari ini.'
+  }
+
+  if (normalizedMessage.includes('pegawai tidak ditemukan')) {
+    return 'Pegawai tidak ditemukan.'
+  }
+
+  if (normalizedMessage.includes('wajah tidak cocok')) {
+    return 'Wajah tidak cocok dengan data pegawai yang terdaftar.'
+  }
+
+  if (error?.status >= 500) {
+    return 'Server sedang bermasalah. Silakan coba lagi.'
+  }
+
+  return message || 'Gagal menyimpan absensi. Silakan coba lagi.'
+}
+
+function normalizeAttendanceRecord(record = {}) {
+  return {
+    ...record,
+    employeeId: record.employeeId || record.pegawai_id || '',
+    checkIn: record.checkIn || record.jam_masuk || '',
+    checkOut: record.checkOut || record.jam_keluar || '',
+  }
+}
+
+async function submitAttendance(path, payload) {
+  try {
+    const response = await apiFetch(path, {
+      method: 'POST',
+      auth: false,
+      body: payload,
+    })
+
+    if (!response?.success || !response.data?.record) {
+      throw new Error('Format response absensi tidak valid')
+    }
+
+    return normalizeAttendanceRecord(response.data.record)
+  } catch (error) {
+    throw createServiceError(error, getAttendanceErrorMessage(error))
+  }
+}
+
 // ─── Read ────────────────────────────────────
 
 /**
@@ -110,16 +184,7 @@ async function getEmployeeAttendanceToday(employeeId) {
  *   return data.record
  */
 async function checkIn(payload) {
-  const response = await apiFetch('/api/attendance/check-in', {
-    method: 'POST',
-    body: payload,
-  })
-
-  if (!response?.success || !response.data?.record) {
-    throw new Error('Format response absensi tidak valid')
-  }
-
-  return response.data.record
+  return submitAttendance('/api/attendance/check-in', payload)
 }
 
 /**
@@ -136,16 +201,7 @@ async function checkIn(payload) {
  *   return data.record
  */
 async function checkOut(payload) {
-  const response = await apiFetch('/api/attendance/check-out', {
-    method: 'POST',
-    body: payload,
-  })
-
-  if (!response?.success || !response.data?.record) {
-    throw new Error('Format response absensi tidak valid')
-  }
-
-  return response.data.record
+  return submitAttendance('/api/attendance/check-out', payload)
 }
 
 // ─── Reports ─────────────────────────────────

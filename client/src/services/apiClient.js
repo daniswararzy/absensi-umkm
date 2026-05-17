@@ -118,7 +118,7 @@ async function apiFetch(path, options = {}) {
     response = await fetch(buildUrl(path), config)
   } catch (err) {
     throw new ApiError(
-      'Tidak bisa terhubung ke server API. Pastikan backend berjalan dan URL API benar.',
+      'Koneksi bermasalah atau server tidak merespons. Silakan coba lagi.',
       0,
       { cause: err.message },
     )

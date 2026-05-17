@@ -13,7 +13,7 @@ const authService = require('../services/authService')
  * POST /api/auth/login
  *
  * Body: { username: string, password: string }
- * Response: { success, data: { user, token } }
+ * Response: { success, data: { user, token, redirectTo } }
  */
 async function login(req, res, next) {
   try {
@@ -28,9 +28,6 @@ async function login(req, res, next) {
       expiresIn: env.jwt.expiresIn,
     })
 
-    // Determine redirect based on role
-    const redirectTo = user.role === 'admin' ? '/dashboard' : '/dashboard-pegawai'
-
     res.json({
       success: true,
       data: {
@@ -41,7 +38,7 @@ async function login(req, res, next) {
           label: user.label,
         },
         token,
-        redirectTo,
+        redirectTo: '/admin/dashboard',
       },
     })
   } catch (err) {
@@ -62,6 +59,12 @@ async function me(req, res, next) {
     if (!user) {
       const err = new Error('User tidak ditemukan')
       err.statusCode = 404
+      throw err
+    }
+
+    if (user.role !== 'admin') {
+      const err = new Error('Sesi login hanya tersedia untuk admin')
+      err.statusCode = 403
       throw err
     }
 

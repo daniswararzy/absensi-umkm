@@ -162,15 +162,8 @@ export const loginAccounts = [
     username: 'admin',
     password: 'admin',
     role: 'admin',
-    redirectTo: '/dashboard',
+    redirectTo: '/admin/dashboard',
     label: 'Admin',
-  },
-  {
-    username: 'pegawai',
-    password: 'pegawai',
-    role: 'pegawai',
-    redirectTo: '/dashboard-pegawai',
-    label: 'Pegawai',
   },
 ]
 

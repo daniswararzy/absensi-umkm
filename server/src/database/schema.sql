@@ -7,7 +7,8 @@
 -- ============================================
 
 -- ─── 1. USERS ─────────────────────────────────
--- Akun login untuk admin dan pegawai.
+-- Akun login dipakai untuk admin.
+-- Pegawai melakukan absensi langsung via scan wajah tanpa login manual.
 -- Password di-hash dengan bcrypt di backend.
 
 CREATE TABLE IF NOT EXISTS users (
@@ -22,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- ─── 2. PEGAWAI ───────────────────────────────
 -- Data identitas pegawai.
--- user_id opsional: NULL jika pegawai belum punya akun login.
+-- user_id opsional untuk kompatibilitas data lama; flow pegawai final tidak memakai login.
 
 CREATE TABLE IF NOT EXISTS pegawai (
   id          VARCHAR(20)  PRIMARY KEY,

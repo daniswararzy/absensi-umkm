@@ -3,23 +3,15 @@ import { useAuth } from '../../contexts'
 import { PageLoader } from '../ui'
 
 /**
- * ProtectedRoute — guards child routes based on auth state.
- *
- * Props:
- *   - allowedRoles : string[] (optional) — if provided, only users whose
- *     role is in this list may access the route. Others are redirected
- *     to their default dashboard.
+ * ProtectedRoute — guards admin routes based on auth state.
  *
  * Behaviour:
- *   - While session is being restored (isLoading), shows a loading spinner
- *     to avoid an unwanted redirect flash.
- *   - If user is not authenticated, redirects to /login and preserves the
- *     originally intended destination in location state.
- *   - If user's role is not in allowedRoles, redirects to:
- *       admin   → /dashboard
- *       pegawai → /dashboard-pegawai
+ *   - While session is being restored, shows a loading spinner.
+ *   - If user is not authenticated, redirects to /admin/login and preserves the
+ *     originally intended admin route in location state.
+ *   - If the authenticated user is not admin, redirects to /absensi.
  */
-function ProtectedRoute({ allowedRoles }) {
+function ProtectedRoute() {
   const { isAuthenticated, isLoading, user } = useAuth()
   const location = useLocation()
 
@@ -30,14 +22,12 @@ function ProtectedRoute({ allowedRoles }) {
 
   // Not logged in → redirect to login, preserve the intended destination
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/admin/login" state={{ from: location }} replace />
   }
 
-  // Role check (if specified)
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    const fallback = user.role === 'admin' ? '/dashboard' : '/dashboard-pegawai'
-
-    return <Navigate to={fallback} replace />
+  // Admin routes are only relevant for admin users.
+  if (user?.role !== 'admin') {
+    return <Navigate to="/absensi" replace />
   }
 
   return <Outlet />

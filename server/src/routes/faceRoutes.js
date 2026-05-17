@@ -10,9 +10,10 @@ const requireRole = require('../middleware/requireRole')
 
 const router = Router()
 
+router.post('/verify', verify)
+
 router.use(verifyToken)
 
-router.post('/verify', requireRole('admin', 'pegawai'), verify)
 router.get('/status', requireRole('admin'), getStatus)
 router.get('/status/:employeeId', requireRole('admin'), getStatusByEmployee)
 router.post('/register', requireRole('admin'), register)

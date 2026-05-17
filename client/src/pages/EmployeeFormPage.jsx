@@ -182,7 +182,7 @@ function EmployeeFormPage() {
           ? 'Data pegawai berhasil diperbarui'
           : 'Data pegawai berhasil ditambahkan',
       })
-      setTimeout(() => navigate('/pegawai'), 700)
+      setTimeout(() => navigate('/admin/pegawai'), 700)
     } catch (err) {
       setFeedback({
         tone: 'error',
@@ -225,7 +225,7 @@ function EmployeeFormPage() {
             <Button onClick={() => setReloadCount((count) => count + 1)}>
               Coba Lagi
             </Button>
-            <Button as={Link} to="/pegawai" variant="secondary">
+            <Button as={Link} to="/admin/pegawai" variant="secondary">
               Kembali
             </Button>
           </div>
@@ -334,7 +334,7 @@ function EmployeeFormPage() {
               disabled={isSaving}
               icon={X}
               onClick={handleCancelClick}
-              to="/pegawai"
+              to="/admin/pegawai"
               variant="secondary"
             >
               Batal

@@ -14,9 +14,9 @@ function LoginPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // If already logged in, redirect to appropriate dashboard
+  // If already logged in, redirect to the matching flow.
   if (isAuthenticated && user) {
-    const destination = user.role === 'admin' ? '/dashboard' : '/dashboard-pegawai'
+    const destination = user.role === 'admin' ? '/admin/dashboard' : '/absensi'
 
     return <Navigate to={destination} replace />
   }
@@ -53,31 +53,31 @@ function LoginPage() {
         />
         <div className="grid gap-3">
           <h1 className="mb-0 max-w-[680px] text-[clamp(30px,8vw,42px)] leading-tight text-brand-brown md:text-[40px]">
-            Sistem Absensi Pegawai
+            Login Admin AbsensiKu
           </h1>
           <p className="mb-0 max-w-[620px] text-[15px] text-brand-brown-muted md:text-[17px]">
-            Kelola kehadiran pegawai UMKM dengan proses absensi wajah yang sederhana.
+            Halaman ini khusus admin. Pegawai melakukan absensi langsung dari halaman scan wajah tanpa login.
           </p>
         </div>
       </section>
 
-      <section className="w-full max-w-[430px] md:max-w-[440px]" aria-label="Form login">
+      <section className="w-full max-w-[430px] md:max-w-[440px]" aria-label="Form login admin">
         <Card
           className="w-full max-w-[430px] border-brand-border-strong md:max-w-[440px]"
-          description="Masuk sebagai admin atau pegawai untuk melanjutkan alur prototype."
-          title="Selamat datang kembali"
+          description="Masukkan kredensial admin untuk membuka dashboard pengelolaan."
+          title="Login Admin"
         >
           <form className="grid gap-4" onSubmit={handleSubmit}>
             <Input
               id="admin-username"
-              label="Username"
+              label="Username Admin"
               onChange={(event) => setUsername(event.target.value)}
               value={username}
               disabled={isSubmitting}
             />
             <Input
               id="admin-password"
-              label="Password"
+              label="Password Admin"
               onChange={(event) => setPassword(event.target.value)}
               type="password"
               value={password}
@@ -91,20 +91,17 @@ function LoginPage() {
             <Button
               icon={LogIn}
               isLoading={isSubmitting}
-              loadingText="Memproses..."
+              loadingText="Memeriksa admin..."
               type="submit"
             >
-              Masuk
+              Masuk sebagai Admin
             </Button>
           </form>
           <div className="mt-4 grid gap-1.5 rounded-[var(--radius-md)] border border-brand-border bg-brand-yellow-soft p-4">
-            <strong className="text-[13px] text-brand-brown">Akun demo</strong>
+            <strong className="text-[13px] text-brand-brown">Akun demo admin</strong>
             <div className="grid gap-1">
               <span className="text-xs font-semibold leading-snug text-brand-brown-muted">
                 Admin: admin / admin
-              </span>
-              <span className="text-xs font-semibold leading-snug text-brand-brown-muted">
-                Pegawai: pegawai / pegawai
               </span>
             </div>
           </div>

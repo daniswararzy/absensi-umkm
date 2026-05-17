@@ -7,13 +7,12 @@
 -- ============================================
 
 -- ─── USERS ────────────────────────────────────
--- admin/admin, pegawai/pegawai
+-- admin/admin
 -- Hash dibuat dengan bcrypt cost 10.
 -- Ganti hash ini di production!
 
 INSERT INTO users (username, password, role, label) VALUES
-  ('admin',   '$2b$10$YW124t5ty36N1QYv5zxdYO3MWOZHMwm.w6WZpJdhEAGzLsZJ4Bv/6',   'admin',   'Admin'),
-  ('pegawai', '$2b$10$7u5Qq2XR3V8g0QqlwX5Ng.kULzG/W8sGPfEX3gcuwJky/eugBM8M2', 'pegawai', 'Pegawai')
+  ('admin', '$2b$10$YW124t5ty36N1QYv5zxdYO3MWOZHMwm.w6WZpJdhEAGzLsZJ4Bv/6', 'admin', 'Admin')
 ON CONFLICT (username) DO NOTHING;
 
 -- ─── PEGAWAI ──────────────────────────────────
@@ -27,12 +26,9 @@ INSERT INTO pegawai (id, nama, jabatan, telepon, alamat, status) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ─── DATA_WAJAH ───────────────────────────────
-
-INSERT INTO data_wajah (pegawai_id, face_encoding, status) VALUES
-  ('PGW-001', 'mock_encoding_sari',   'Terdaftar'),
-  ('PGW-002', 'mock_encoding_rizky',  'Terdaftar'),
-  ('PGW-004', 'mock_encoding_fajar',  'Terdaftar')
-ON CONFLICT (pegawai_id) DO NOTHING;
+-- Tidak ada seed data_wajah mock.
+-- face_encoding harus berasal dari registrasi wajah nyata
+-- dan disimpan sebagai JSON array berisi 128 angka.
 
 -- ─── ABSENSI (hari ini) ──────────────────────
 

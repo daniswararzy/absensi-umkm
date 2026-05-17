@@ -1,4 +1,7 @@
 const { supabase } = require('../config')
+const faceService = require('./faceService')
+
+const FACE_RECOGNITION_METHOD = 'Face Recognition'
 
 function createHttpError(message, statusCode) {
   const err = new Error(message)
@@ -13,20 +16,18 @@ function requireSupabase() {
   }
 }
 
-function normalizeEmployeeId(employeeId) {
-  const id = typeof employeeId === 'string' ? employeeId.trim() : ''
-
-  if (!id) {
-    throw createHttpError('ID pegawai wajib diisi', 400)
-  }
-
-  return id
-}
-
 function normalizeMethod(method) {
   const value = typeof method === 'string' ? method.trim() : ''
 
-  return value || 'Face Recognition'
+  if (!value) {
+    return FACE_RECOGNITION_METHOD
+  }
+
+  if (value.toLowerCase() !== FACE_RECOGNITION_METHOD.toLowerCase()) {
+    throw createHttpError('Absensi wajah hanya menerima metode Face Recognition', 400)
+  }
+
+  return FACE_RECOGNITION_METHOD
 }
 
 function getJakartaParts() {
@@ -80,6 +81,28 @@ async function ensureEmployeeExists(employeeId) {
   }
 }
 
+async function resolveEmployeeForAttendance(payload = {}) {
+  if (!Array.isArray(payload.descriptor)) {
+    throw createHttpError('Descriptor wajah wajib dikirim untuk absensi wajah', 400)
+  }
+
+  const requestedEmployeeId = typeof payload.employeeId === 'string'
+    ? payload.employeeId.trim()
+    : ''
+  const match = await faceService.verifyFace({
+    descriptor: payload.descriptor,
+    employeeId: requestedEmployeeId || undefined,
+  })
+
+  if (!match.matched) {
+    const statusCode = match.reason === 'not_registered' ? 404 : 401
+
+    throw createHttpError(match.message || 'Wajah tidak cocok dengan data pegawai', statusCode)
+  }
+
+  return match.employeeId
+}
+
 async function getTodayRecord(employeeId, date) {
   const { data, error } = await supabase
     .from('absensi')
@@ -98,8 +121,8 @@ async function getTodayRecord(employeeId, date) {
 async function checkIn(payload = {}) {
   requireSupabase()
 
-  const employeeId = normalizeEmployeeId(payload.employeeId)
   const method = normalizeMethod(payload.method)
+  const employeeId = await resolveEmployeeForAttendance(payload)
   const { date, time } = getJakartaParts()
 
   await ensureEmployeeExists(employeeId)
@@ -151,8 +174,8 @@ async function checkIn(payload = {}) {
 async function checkOut(payload = {}) {
   requireSupabase()
 
-  const employeeId = normalizeEmployeeId(payload.employeeId)
   const method = normalizeMethod(payload.method)
+  const employeeId = await resolveEmployeeForAttendance(payload)
   const { date, time } = getJakartaParts()
 
   await ensureEmployeeExists(employeeId)

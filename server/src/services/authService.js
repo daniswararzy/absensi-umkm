@@ -57,6 +57,12 @@ async function verifyCredentials(username, password) {
     throw err
   }
 
+  if (user.role !== 'admin') {
+    const err = new Error('Login hanya tersedia untuk admin')
+    err.statusCode = 403
+    throw err
+  }
+
   // Return user without password hash
   return {
     id: user.id,

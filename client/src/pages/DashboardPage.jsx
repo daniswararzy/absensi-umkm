@@ -160,9 +160,9 @@ function DashboardPage() {
     },
   ]
   const quickActions = [
-    { icon: UserPlus, label: 'Tambah Pegawai', to: '/pegawai/tambah' },
-    { icon: ScanFace, label: 'Registrasi Wajah', to: '/registrasi-wajah' },
-    { icon: FileText, label: 'Lihat Laporan', to: '/laporan' },
+    { icon: UserPlus, label: 'Tambah Pegawai', to: '/admin/pegawai/tambah' },
+    { icon: ScanFace, label: 'Registrasi Wajah', to: '/admin/registrasi-wajah' },
+    { icon: FileText, label: 'Lihat Laporan', to: '/admin/laporan' },
   ]
 
   return (

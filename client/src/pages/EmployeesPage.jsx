@@ -37,7 +37,7 @@ const employeeColumns = (onDeleteClick) => [
           as={Link}
           icon={Pencil}
           size="sm"
-          to={`/pegawai/${row.id}/edit`}
+          to={`/admin/pegawai/${row.id}/edit`}
           variant="secondary"
         >
           Edit
@@ -194,7 +194,7 @@ function EmployeesPage() {
     <>
       <PageHeader
         actions={
-          <Button as={Link} icon={UserPlus} to="/pegawai/tambah">
+          <Button as={Link} icon={UserPlus} to="/admin/pegawai/tambah">
             Tambah Pegawai
           </Button>
         }

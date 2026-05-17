@@ -10,7 +10,7 @@ Testing yang tersedia masih berupa:
 - ESLint untuk cek kualitas kode frontend.
 - Build production untuk cek aplikasi bisa dikompilasi.
 - Smoke test manual untuk membuka route utama.
-- Manual test flow login admin dan pegawai.
+- Manual test flow login admin dan absensi wajah pegawai.
 
 ## Menjalankan Frontend
 
@@ -94,7 +94,7 @@ Hasil yang diharapkan:
 - `npm run lint` selesai tanpa error.
 - `npm run build` selesai dan menghasilkan folder `dist`.
 
-## Akun Dummy
+## Akun Dummy Admin
 
 Admin:
 
@@ -103,41 +103,38 @@ Username: admin
 Password: admin
 ```
 
-Pegawai:
-
-```text
-Username: pegawai
-Password: pegawai
-```
-
 ## Route yang Perlu Dicek
 
 Buka route berikut lewat browser:
 
 ```text
-/login
-/dashboard
-/pegawai
-/pegawai/tambah
-/registrasi-wajah
-/laporan
-/dashboard-pegawai
+/
 /absensi
+/admin/login
+/admin/dashboard
+/admin/pegawai
+/admin/pegawai/tambah
+/admin/registrasi-wajah
+/admin/laporan
+```
+
+Legacy redirect yang perlu dicek:
+
+```text
+/login -> /admin/login
+/dashboard -> /admin/dashboard
+/pegawai -> /admin/pegawai
+/registrasi-wajah -> /admin/registrasi-wajah
+/laporan -> /admin/laporan
 ```
 
 ## Checklist Manual Testing
 
 Login Admin:
 
-- Buka `/login`.
+- Buka `/admin/login`.
 - Masukkan `admin` dan `admin`.
-- Pastikan masuk ke dashboard admin.
-
-Login Pegawai:
-
-- Buka `/login`.
-- Masukkan `pegawai` dan `pegawai`.
-- Pastikan masuk ke dashboard pegawai.
+- Pastikan masuk ke `/admin/dashboard`.
 
 Dashboard Admin:
 
@@ -153,37 +150,33 @@ Data Pegawai:
 
 Form Pegawai:
 
-- Buka `/pegawai/tambah`.
+- Buka `/admin/pegawai/tambah`.
 - Kosongkan field wajib.
 - Klik `Simpan Data`.
 - Pastikan pesan validasi muncul.
 
 Registrasi Wajah:
 
-- Buka `/registrasi-wajah`.
+- Buka `/admin/registrasi-wajah`.
 - Pastikan area kamera, informasi pegawai, tombol kamera, dan status sistem tampil.
-
-Dashboard Pegawai:
-
-- Buka `/dashboard-pegawai`.
-- Pastikan tanggal dan waktu realtime tampil.
-- Pastikan identitas pegawai dan status kehadiran tampil.
 
 Absensi Pegawai:
 
+- Buka `/` dan pastikan diarahkan ke `/absensi`.
 - Buka `/absensi`.
+- Pastikan halaman bisa dibuka tanpa login.
+- Buka `/dashboard-pegawai` dan pastikan diarahkan ke `/absensi`.
 - Pilih `Absensi Masuk` atau `Absensi Pulang`.
-- Klik `Mulai Scan`.
+- Klik `Scan Wajah`.
 - Pastikan status berubah menjadi `Memproses data wajah...`.
 - Klik `Ulangi Scan`.
 - Pastikan status kembali menjadi `Menunggu pemindaian wajah`.
 
 Laporan Kehadiran:
 
-- Buka `/laporan`.
+- Buka `/admin/laporan`.
 - Pastikan filter, tombol cetak, tombol ekspor, dan tabel laporan tampil.
 
 ## Catatan
 
-Testing ini masih untuk prototype UI dengan dummy data.
-Belum ada koneksi database, JWT, validasi backend, atau face recognition sungguhan.
+Testing ini masih untuk MVP demo. Jalankan backend, konfigurasi Supabase/JWT, dan pastikan model face-api.js tersedia sebelum menguji flow API dan scan wajah secara penuh.
