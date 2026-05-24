@@ -5,12 +5,14 @@ import absensikuLogo from '../assets/absensiku-logo.png'
 import { Button, Card, Input } from '../components/ui'
 import { useAuth } from '../contexts'
 
+const SHOW_DEMO_CREDENTIALS = import.meta.env.DEV
+
 function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { isAuthenticated, login, user } = useAuth()
-  const [username, setUsername] = useState('admin')
-  const [password, setPassword] = useState('admin')
+  const [username, setUsername] = useState(() => (SHOW_DEMO_CREDENTIALS ? 'admin' : ''))
+  const [password, setPassword] = useState(() => (SHOW_DEMO_CREDENTIALS ? 'admin' : ''))
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -97,14 +99,16 @@ function LoginPage() {
               Masuk sebagai Admin
             </Button>
           </form>
-          <div className="mt-4 grid gap-1.5 rounded-[var(--radius-md)] border border-brand-border bg-brand-yellow-soft p-4">
-            <strong className="text-[13px] text-brand-brown">Akun demo admin</strong>
-            <div className="grid gap-1">
-              <span className="text-xs font-semibold leading-snug text-brand-brown-muted">
-                Admin: admin / admin
-              </span>
+          {SHOW_DEMO_CREDENTIALS ? (
+            <div className="mt-4 grid gap-1.5 rounded-[var(--radius-md)] border border-brand-border bg-brand-yellow-soft p-4">
+              <strong className="text-[13px] text-brand-brown">Akun demo admin</strong>
+              <div className="grid gap-1">
+                <span className="text-xs font-semibold leading-snug text-brand-brown-muted">
+                  Admin: admin / admin
+                </span>
+              </div>
             </div>
-          </div>
+          ) : null}
         </Card>
       </section>
     </main>

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import * as faceapi from 'face-api.js'
 import {
   CalendarDays,
   Camera,
@@ -18,11 +17,20 @@ import * as faceService from '../services/faceService'
 
 const MODEL_URL = '/models'
 const DESCRIPTOR_LENGTH = 128
+let faceApiModulePromise = null
 
 const attendanceOptions = [
   { icon: LogIn, label: 'Masuk', value: 'masuk' },
   { icon: LogOut, label: 'Pulang', value: 'pulang' },
 ]
+
+function loadFaceApi() {
+  if (!faceApiModulePromise) {
+    faceApiModulePromise = import('face-api.js')
+  }
+
+  return faceApiModulePromise
+}
 
 function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop())
@@ -216,6 +224,8 @@ function AttendancePage() {
       setModelError('')
 
       try {
+        const faceapi = await loadFaceApi()
+
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
@@ -368,6 +378,7 @@ function AttendancePage() {
         throw new Error('Kamera belum siap. Aktifkan kamera lalu coba lagi.')
       }
 
+      const faceapi = await loadFaceApi()
       const detection = await faceapi
         .detectSingleFace(
           videoRef.current,
@@ -543,7 +554,7 @@ function AttendancePage() {
     : 'warning'
 
   return (
-    <main className="mx-auto grid min-h-[100svh] w-full max-w-[480px] content-start gap-4 bg-brand-page p-4 sm:max-w-[760px] sm:p-6 md:max-w-[1120px] md:gap-6 md:p-[32px_var(--page-gutter-desktop)]">
+    <main className="employee-attendance-page mx-auto grid min-h-[100svh] w-full max-w-[480px] content-start gap-4 bg-brand-page p-4 sm:max-w-[760px] sm:p-6 md:max-w-[1120px] md:gap-6 md:p-[32px_var(--page-gutter-desktop)]">
       <section className="grid gap-4 rounded-[var(--radius-lg)] border border-brand-border bg-brand-white p-4 shadow-[var(--shadow-soft)] md:flex md:items-start md:justify-between md:gap-6 md:p-7">
         <div className="grid grid-cols-[46px_minmax(0,1fr)] items-start gap-3">
           <span className="grid h-[46px] w-[46px] place-items-center rounded-[var(--radius-md)] bg-brand-yellow text-brand-brown shadow-[var(--shadow-subtle)]">
@@ -577,14 +588,14 @@ function AttendancePage() {
         </div>
       </section>
 
-      <section className="rounded-[var(--radius-md)] border border-brand-border bg-brand-white p-3 shadow-[var(--shadow-subtle)]">
-        <ol className="grid grid-cols-5 gap-2 p-0" aria-label="Tahapan absensi">
+      <section className="rounded-[var(--radius-md)] border border-brand-border bg-brand-white p-2 shadow-[var(--shadow-subtle)] sm:p-3">
+        <ol className="grid grid-cols-5 gap-1 p-0 sm:gap-2" aria-label="Tahapan absensi">
           {stepItems.map((step, index) => {
             const isActive = index === activeStepIndex
 
             return (
               <li
-                className={`grid min-w-0 justify-items-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-2 text-center ${
+                className={`grid min-w-0 justify-items-center gap-1 rounded-[var(--radius-sm)] border px-1 py-2 text-center sm:px-1.5 ${
                   step.complete
                     ? 'border-brand-yellow bg-brand-yellow-soft text-brand-brown'
                     : isActive
@@ -602,7 +613,7 @@ function AttendancePage() {
                 >
                   {index + 1}
                 </span>
-                <span className="text-[11px] font-extrabold leading-tight sm:text-xs">
+                <span className="min-w-0 max-w-full break-words text-[10px] font-extrabold leading-tight sm:text-xs">
                   {step.label}
                 </span>
               </li>
@@ -635,7 +646,7 @@ function AttendancePage() {
             return (
               <button
                 aria-pressed={isSelected}
-                className={`grid min-h-[46px] min-w-[112px] grid-cols-[18px_auto] place-content-center items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-[15px] font-extrabold transition-[background,border-color] ${
+                className={`grid min-h-[46px] min-w-0 grid-cols-[18px_minmax(0,auto)] place-content-center items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-[15px] font-extrabold transition-[background,border-color] ${
                   isSelected
                     ? 'border-brand-yellow bg-brand-yellow text-brand-brown shadow-[var(--shadow-subtle)]'
                     : 'border-transparent bg-transparent text-brand-brown-muted hover:border-brand-border hover:bg-brand-white hover:text-brand-brown'
@@ -646,7 +657,7 @@ function AttendancePage() {
                 type="button"
               >
                 <Icon aria-hidden="true" className="h-[18px] w-[18px] stroke-[2.4]" />
-                <span>{option.label}</span>
+                <span className="min-w-0 break-words">{option.label}</span>
               </button>
             )
           })}

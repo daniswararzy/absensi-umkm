@@ -5,30 +5,11 @@
  *   - fetch today's records / filtered records
  *   - check-in / check-out
  *   - report data with filters
- *
- * ──────────────────────────────────────────────
- * MOCK vs REAL API
- *
- * Currently uses mock implementations backed by dummyData.
- * To switch to a real backend:
- *
- *   1. Uncomment the apiFetch import
- *   2. Replace each function body with the commented API call
- *   3. Remove the dummyData import
- *
- * The function signatures stay the same, so pages require
- * zero changes.
- * ──────────────────────────────────────────────
  */
 
-import { attendanceRecords as dummyRecords, attendanceReport as dummyReport } from '../data/dummyData'
 import { apiFetch } from './apiClient'
 
 // ─── Helpers ─────────────────────────────────
-
-function simulateDelay(ms = 300) {
-  return new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 200))
-}
 
 function createServiceError(error, message) {
   const nextError = new Error(message)
@@ -37,6 +18,44 @@ function createServiceError(error, message) {
   nextError.data = error?.data
 
   return nextError
+}
+
+function buildLaporanPath(filters = {}) {
+  const query = new URLSearchParams()
+
+  if (filters.tanggal) {
+    query.set('tanggal', filters.tanggal)
+  }
+
+  if (filters.pegawai_id) {
+    query.set('pegawai_id', filters.pegawai_id)
+  }
+
+  if (filters.tanggal_mulai) {
+    query.set('tanggal_mulai', filters.tanggal_mulai)
+  }
+
+  if (filters.tanggal_selesai) {
+    query.set('tanggal_selesai', filters.tanggal_selesai)
+  }
+
+  const queryString = query.toString()
+
+  return queryString ? `/api/laporan?${queryString}` : '/api/laporan'
+}
+
+function getJakartaDateKey() {
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+  })
+  const parts = Object.fromEntries(
+    formatter.formatToParts(new Date()).map((part) => [part.type, part.value]),
+  )
+
+  return `${parts.year}-${parts.month}-${parts.day}`
 }
 
 function getAttendanceErrorMessage(error) {
@@ -49,6 +68,14 @@ function getAttendanceErrorMessage(error) {
 
   if (normalizedMessage.includes('sudah melakukan absensi masuk')) {
     return 'Anda sudah melakukan absensi masuk hari ini.'
+  }
+
+  if (normalizedMessage.includes('absensi belum dibuka')) {
+    return message
+  }
+
+  if (normalizedMessage.includes('absensi sudah ditutup')) {
+    return message
   }
 
   if (
@@ -86,6 +113,76 @@ function normalizeAttendanceRecord(record = {}) {
   }
 }
 
+function normalizeReportRecord(report = {}) {
+  return normalizeAttendanceRecord({
+    id: report.id,
+    employeeId: report.pegawaiId || report.employeeId || '',
+    employeeName: report.nama || report.employeeName || 'Unknown',
+    date: report.tanggal || report.date || '',
+    checkIn: report.jamMasuk || report.checkIn || '',
+    checkOut: report.jamKeluar || report.checkOut || '',
+    status: report.status || 'Belum Absen',
+    method: report.metode || report.method || '-',
+  })
+}
+
+function getReportData(response) {
+  if (!response?.success || !response.data || !Array.isArray(response.data.reports)) {
+    throw new Error('Format response laporan tidak valid')
+  }
+
+  return response.data.reports
+}
+
+async function fetchReports(filters = {}) {
+  const response = await apiFetch(buildLaporanPath(filters))
+
+  return getReportData(response)
+}
+
+function getAttendanceScore(summary) {
+  const total = summary.hadir
+    + summary.terlambat
+    + summary.izin
+    + summary.alfa
+    + summary.belumAbsen
+
+  if (total === 0) {
+    return '0%'
+  }
+
+  return `${Math.round(((summary.hadir + summary.terlambat) / total) * 100)}%`
+}
+
+function summarizeAttendance(records) {
+  const summaries = new Map()
+
+  records.forEach((record) => {
+    const key = record.employeeId || record.employeeName
+    const current = summaries.get(key) || {
+      employeeId: record.employeeId,
+      employeeName: record.employeeName || 'Unknown',
+      hadir: 0,
+      terlambat: 0,
+      izin: 0,
+      alfa: 0,
+      belumAbsen: 0,
+      score: '0%',
+    }
+
+    if (record.status === 'Hadir') current.hadir += 1
+    else if (record.status === 'Terlambat') current.terlambat += 1
+    else if (record.status === 'Izin') current.izin += 1
+    else if (record.status === 'Alfa') current.alfa += 1
+    else if (record.status === 'Belum Absen') current.belumAbsen += 1
+
+    current.score = getAttendanceScore(current)
+    summaries.set(key, current)
+  })
+
+  return [...summaries.values()]
+}
+
 async function submitAttendance(path, payload) {
   try {
     const response = await apiFetch(path, {
@@ -110,15 +207,11 @@ async function submitAttendance(path, payload) {
  * Fetch today's attendance records.
  *
  * @returns {Promise<object[]>}
- *
- * ⚠️ MOCK — replace with:
- *   const data = await apiFetch('/api/attendance/today')
- *   return data.records
  */
 async function getTodayAttendance() {
-  await simulateDelay()
+  const reports = await fetchReports({ tanggal: getJakartaDateKey() })
 
-  return [...dummyRecords]
+  return reports.map(normalizeReportRecord)
 }
 
 /**
@@ -126,24 +219,15 @@ async function getTodayAttendance() {
  *
  * @param {{ date?: string, employeeId?: string, status?: string }} [filters]
  * @returns {Promise<object[]>}
- *
- * ⚠️ MOCK — replace with:
- *   const params = new URLSearchParams(filters).toString()
- *   const data = await apiFetch(`/api/attendance?${params}`)
- *   return data.records
  */
 async function getAttendanceRecords(filters = {}) {
-  await simulateDelay()
-
-  let result = [...dummyRecords]
-
-  if (filters.date) {
-    result = result.filter((record) => record.date === filters.date)
-  }
-
-  if (filters.employeeId) {
-    result = result.filter((record) => record.employeeId === filters.employeeId)
-  }
+  const reports = await fetchReports({
+    tanggal: filters.date,
+    tanggal_mulai: filters.startDate,
+    tanggal_selesai: filters.endDate,
+    pegawai_id: filters.employeeId,
+  })
+  let result = reports.map(normalizeReportRecord)
 
   if (filters.status) {
     result = result.filter((record) => record.status === filters.status)
@@ -157,15 +241,14 @@ async function getAttendanceRecords(filters = {}) {
  *
  * @param {string} employeeId
  * @returns {Promise<object|null>}
- *
- * ⚠️ MOCK — replace with:
- *   const data = await apiFetch(`/api/attendance/today/${employeeId}`)
- *   return data.record
  */
 async function getEmployeeAttendanceToday(employeeId) {
-  await simulateDelay(150)
+  const records = await getAttendanceRecords({
+    date: getJakartaDateKey(),
+    employeeId,
+  })
 
-  return dummyRecords.find((record) => record.employeeId === employeeId) || null
+  return records.find((record) => record.employeeId === employeeId) || null
 }
 
 // ─── Actions ─────────────────────────────────
@@ -175,13 +258,6 @@ async function getEmployeeAttendanceToday(employeeId) {
  *
  * @param {{ employeeId: string, method?: string }} payload
  * @returns {Promise<object>} — the created attendance record
- *
- * ⚠️ MOCK — replace with:
- *   const data = await apiFetch('/api/attendance/check-in', {
- *     method: 'POST',
- *     body: payload,
- *   })
- *   return data.record
  */
 async function checkIn(payload) {
   return submitAttendance('/api/attendance/check-in', payload)
@@ -192,13 +268,6 @@ async function checkIn(payload) {
  *
  * @param {{ employeeId: string, attendanceId?: string }} payload
  * @returns {Promise<object>} — the updated attendance record
- *
- * ⚠️ MOCK — replace with:
- *   const data = await apiFetch('/api/attendance/check-out', {
- *     method: 'POST',
- *     body: payload,
- *   })
- *   return data.record
  */
 async function checkOut(payload) {
   return submitAttendance('/api/attendance/check-out', payload)
@@ -211,19 +280,18 @@ async function checkOut(payload) {
  *
  * @param {{ startDate?: string, endDate?: string }} [filters]
  * @returns {Promise<object[]>}
- *
- * ⚠️ MOCK — replace with:
- *   const params = new URLSearchParams(filters).toString()
- *   const data = await apiFetch(`/api/attendance/report?${params}`)
- *   return data.report
  */
 async function getAttendanceReport(filters = {}) {
-  void filters
+  const date = filters.date || filters.tanggal || (
+    filters.startDate === filters.endDate ? filters.startDate : undefined
+  )
+  const records = await getAttendanceRecords({
+    date,
+    endDate: date ? undefined : filters.endDate,
+    startDate: date ? undefined : filters.startDate,
+  })
 
-  await simulateDelay(400)
-
-  // Mock: return static report data regardless of filters
-  return [...dummyReport]
+  return summarizeAttendance(records)
 }
 
 // ─── Public API ──────────────────────────────

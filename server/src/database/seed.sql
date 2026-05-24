@@ -31,6 +31,8 @@ ON CONFLICT (id) DO NOTHING;
 -- dan disimpan sebagai JSON array berisi 128 angka.
 
 -- ─── ABSENSI (hari ini) ──────────────────────
+-- Aturan default: masuk normal sampai 08:00 dengan toleransi 15 menit.
+-- Karena itu 08:01 masih Hadir, sedangkan 08:18 sudah Terlambat.
 
 INSERT INTO absensi (pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode) VALUES
   ('PGW-001', CURRENT_DATE, '07:56', '16:03', 'Hadir',      'Face Recognition'),

@@ -1,7 +1,8 @@
-const { supabase } = require('../config')
+const { env, supabase } = require('../config')
 const faceService = require('./faceService')
 
 const FACE_RECOGNITION_METHOD = 'Face Recognition'
+const ACTIVE_EMPLOYEE_STATUS = 'Aktif'
 
 function createHttpError(message, statusCode) {
   const err = new Error(message)
@@ -52,9 +53,71 @@ function getJakartaParts() {
 }
 
 function getAttendanceStatus(time) {
-  const [hour, minute] = time.split(':').map((value) => Number(value))
+  const seconds = getTimeSeconds(time)
+  const { lateAfterSeconds } = getAttendanceSchedule()
 
-  return hour > 8 || (hour === 8 && minute > 0) ? 'Terlambat' : 'Hadir'
+  return seconds > lateAfterSeconds ? 'Terlambat' : 'Hadir'
+}
+
+function getTimeSeconds(time) {
+  const [hour = 0, minute = 0, second = 0] = time
+    .split(':')
+    .map((value) => Number(value))
+
+  return (hour * 60 * 60) + (minute * 60) + second
+}
+
+function getAttendanceSchedule() {
+  return {
+    openTime: env.attendance.openTime,
+    checkInNormalUntilTime: env.attendance.checkInNormalUntilTime,
+    lateToleranceMinutes: env.attendance.lateToleranceMinutes,
+    lateAfterTime: env.attendance.lateAfterTime,
+    checkOutTime: env.attendance.checkOutTime,
+    closeTime: env.attendance.closeTime,
+    openSeconds: getTimeSeconds(env.attendance.openTime),
+    checkInNormalUntilSeconds: getTimeSeconds(env.attendance.checkInNormalUntilTime),
+    lateAfterSeconds: getTimeSeconds(env.attendance.lateAfterTime),
+    checkOutSeconds: getTimeSeconds(env.attendance.checkOutTime),
+    closeSeconds: getTimeSeconds(env.attendance.closeTime),
+  }
+}
+
+function assertCheckInWindow(time) {
+  const seconds = getTimeSeconds(time)
+  const { closeSeconds, closeTime, openSeconds, openTime } = getAttendanceSchedule()
+
+  if (seconds < openSeconds) {
+    throw createHttpError(`Absensi belum dibuka. Silakan mulai pukul ${openTime} WIB.`, 403)
+  }
+
+  if (seconds > closeSeconds) {
+    throw createHttpError(`Absensi sudah ditutup pukul ${closeTime} WIB. Silakan hubungi admin.`, 403)
+  }
+}
+
+function assertCheckOutWindow(time) {
+  const seconds = getTimeSeconds(time)
+  const {
+    checkOutSeconds,
+    checkOutTime,
+    closeSeconds,
+    closeTime,
+    openSeconds,
+    openTime,
+  } = getAttendanceSchedule()
+
+  if (seconds < openSeconds) {
+    throw createHttpError(`Absensi belum dibuka. Silakan mulai pukul ${openTime} WIB.`, 403)
+  }
+
+  if (seconds < checkOutSeconds) {
+    throw createHttpError(`Absensi pulang belum dibuka. Silakan mulai pukul ${checkOutTime} WIB.`, 403)
+  }
+
+  if (seconds > closeSeconds) {
+    throw createHttpError(`Absensi sudah ditutup pukul ${closeTime} WIB. Silakan hubungi admin.`, 403)
+  }
 }
 
 function toAttendanceRecord(row) {
@@ -72,12 +135,16 @@ function toAttendanceRecord(row) {
 async function ensureEmployeeExists(employeeId) {
   const { data, error } = await supabase
     .from('pegawai')
-    .select('id')
+    .select('id, status')
     .eq('id', employeeId)
     .single()
 
   if (error || !data) {
     throw createHttpError('Pegawai tidak ditemukan', 404)
+  }
+
+  if (data.status !== ACTIVE_EMPLOYEE_STATUS) {
+    throw createHttpError('Pegawai nonaktif tidak dapat melakukan absensi', 403)
   }
 }
 
@@ -122,8 +189,11 @@ async function checkIn(payload = {}) {
   requireSupabase()
 
   const method = normalizeMethod(payload.method)
-  const employeeId = await resolveEmployeeForAttendance(payload)
   const { date, time } = getJakartaParts()
+
+  assertCheckInWindow(time)
+
+  const employeeId = await resolveEmployeeForAttendance(payload)
 
   await ensureEmployeeExists(employeeId)
 
@@ -175,8 +245,11 @@ async function checkOut(payload = {}) {
   requireSupabase()
 
   const method = normalizeMethod(payload.method)
-  const employeeId = await resolveEmployeeForAttendance(payload)
   const { date, time } = getJakartaParts()
+
+  assertCheckOutWindow(time)
+
+  const employeeId = await resolveEmployeeForAttendance(payload)
 
   await ensureEmployeeExists(employeeId)
 

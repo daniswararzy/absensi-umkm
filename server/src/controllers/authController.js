@@ -17,7 +17,7 @@ const authService = require('../services/authService')
  */
 async function login(req, res, next) {
   try {
-    const { username, password } = req.body
+    const { username, password } = req.body || {}
 
     // Verify credentials via service
     const user = await authService.verifyCredentials(username, password)

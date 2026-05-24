@@ -8,6 +8,8 @@ async function getLaporan(req, res, next) {
   try {
     const filters = {
       tanggal: req.query.tanggal,
+      tanggal_mulai: req.query.tanggal_mulai || req.query.start_date || req.query.startDate,
+      tanggal_selesai: req.query.tanggal_selesai || req.query.end_date || req.query.endDate,
       pegawai_id: req.query.pegawai_id,
     }
 

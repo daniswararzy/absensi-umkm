@@ -7,6 +7,14 @@ function buildLaporanPath(filters = {}) {
     query.set('tanggal', filters.tanggal)
   }
 
+  if (filters.tanggal_mulai) {
+    query.set('tanggal_mulai', filters.tanggal_mulai)
+  }
+
+  if (filters.tanggal_selesai) {
+    query.set('tanggal_selesai', filters.tanggal_selesai)
+  }
+
   if (filters.pegawai_id) {
     query.set('pegawai_id', filters.pegawai_id)
   }

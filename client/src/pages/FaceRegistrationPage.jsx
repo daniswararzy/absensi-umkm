@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import * as faceapi from 'face-api.js'
-import { Camera, RefreshCcw, Save, ScanFace } from 'lucide-react'
+import { Camera, CameraOff, RefreshCcw, Save, ScanFace } from 'lucide-react'
 import {
   AlertBanner,
   Button,
@@ -14,10 +13,20 @@ import * as faceService from '../services/faceService'
 
 const MODEL_URL = '/models'
 const DESCRIPTOR_LENGTH = 128
+let faceApiModulePromise = null
 
 const faceColumns = [
   { key: 'name', header: 'Nama Pegawai' },
   { key: 'role', header: 'Jabatan' },
+  {
+    key: 'status',
+    header: 'Status Pegawai',
+    render: (row) => (
+      <StatusBadge tone={row.status === 'Aktif' ? 'success' : 'warning'}>
+        {row.status}
+      </StatusBadge>
+    ),
+  },
   { key: 'id', header: 'ID Pegawai' },
   {
     key: 'faceStatus',
@@ -29,6 +38,14 @@ const faceColumns = [
     ),
   },
 ]
+
+function loadFaceApi() {
+  if (!faceApiModulePromise) {
+    faceApiModulePromise = import('face-api.js')
+  }
+
+  return faceApiModulePromise
+}
 
 function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop())
@@ -43,7 +60,15 @@ function getStatusTone(status) {
     return 'danger'
   }
 
+  if (status === 'Nonaktif') {
+    return 'warning'
+  }
+
   return 'info'
+}
+
+function isEmployeeActive(employee) {
+  return employee?.status === 'Aktif'
 }
 
 function normalizeDescriptor(value) {
@@ -107,13 +132,19 @@ function FaceRegistrationPage() {
     () => employees.find((employee) => employee.id === selectedEmployeeId) || null,
     [employees, selectedEmployeeId],
   )
+  const selectedEmployeeIsInactive = Boolean(selectedEmployee && !isEmployeeActive(selectedEmployee))
 
   const loadEmployees = useCallback(async () => {
     try {
       const data = await faceService.getFaceRegistrationStatus()
+      const preferredEmployee = data.find(isEmployeeActive) || data[0]
 
       setEmployees(data)
-      setSelectedEmployeeId((current) => current || data[0]?.id || '')
+      setSelectedEmployeeId((current) => (
+        data.some((employee) => employee.id === current)
+          ? current
+          : preferredEmployee?.id || ''
+      ))
     } catch (err) {
       setFeedback({
         tone: 'error',
@@ -132,6 +163,8 @@ function FaceRegistrationPage() {
       setModelError('')
 
       try {
+        const faceapi = await loadFaceApi()
+
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
@@ -210,6 +243,24 @@ function FaceRegistrationPage() {
     }
   }
 
+  function handleStopCamera() {
+    if (isCapturing || isSaving || isStartingCamera) {
+      return
+    }
+
+    stopStream(streamRef.current)
+    streamRef.current = null
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+
+    setIsCameraActive(false)
+    setDescriptor(null)
+    setDetectionScore(null)
+    setFeedback(null)
+  }
+
   async function handleCaptureFace() {
     setFeedback(null)
 
@@ -229,9 +280,18 @@ function FaceRegistrationPage() {
       return
     }
 
+    if (selectedEmployeeIsInactive) {
+      setFeedback({
+        tone: 'error',
+        message: 'Pegawai nonaktif tidak dapat direkam wajah.',
+      })
+      return
+    }
+
     setIsCapturing(true)
 
     try {
+      const faceapi = await loadFaceApi()
       const detection = await faceapi
         .detectSingleFace(
           videoRef.current,
@@ -279,13 +339,21 @@ function FaceRegistrationPage() {
       return
     }
 
-    if (!descriptor) {
-      setFeedback({ tone: 'error', message: 'Ambil wajah terlebih dahulu' })
+    if (!selectedEmployee) {
+      setFeedback({ tone: 'error', message: 'Pegawai terpilih tidak valid' })
       return
     }
 
-    if (!selectedEmployee) {
-      setFeedback({ tone: 'error', message: 'Pegawai terpilih tidak valid' })
+    if (selectedEmployeeIsInactive) {
+      setFeedback({
+        tone: 'error',
+        message: 'Pegawai nonaktif tidak dapat didaftarkan wajah.',
+      })
+      return
+    }
+
+    if (!descriptor) {
+      setFeedback({ tone: 'error', message: 'Ambil wajah terlebih dahulu' })
       return
     }
 
@@ -351,6 +419,10 @@ function FaceRegistrationPage() {
       label: 'Pegawai terpilih',
       status: selectedEmployee ? selectedEmployee.name : 'Belum',
     },
+    {
+      label: 'Status pegawai',
+      status: selectedEmployee?.status || 'Belum',
+    },
   ]
 
   if (isLoading) {
@@ -414,17 +486,28 @@ function FaceRegistrationPage() {
               ) : null}
             </div>
             <div className="grid grid-cols-1 gap-2.5 sm:flex sm:flex-wrap">
+              {isCameraActive ? (
+                <Button
+                  disabled={isCapturing || isSaving || isStartingCamera}
+                  icon={CameraOff}
+                  onClick={handleStopCamera}
+                  variant="secondary"
+                >
+                  Stop Kamera
+                </Button>
+              ) : (
+                <Button
+                  disabled={isCapturing || isSaving}
+                  icon={Camera}
+                  isLoading={isStartingCamera}
+                  loadingText="Mengaktifkan..."
+                  onClick={handleStartCamera}
+                >
+                  Mulai Kamera
+                </Button>
+              )}
               <Button
-                disabled={isCapturing || isSaving}
-                icon={Camera}
-                isLoading={isStartingCamera}
-                loadingText="Mengaktifkan..."
-                onClick={handleStartCamera}
-              >
-                Mulai Kamera
-              </Button>
-              <Button
-                disabled={isStartingCamera || isSaving || isModelLoading}
+                disabled={isStartingCamera || isSaving || isModelLoading || selectedEmployeeIsInactive}
                 icon={ScanFace}
                 isLoading={isCapturing}
                 loadingText="Mengambil..."
@@ -434,7 +517,7 @@ function FaceRegistrationPage() {
                 Ambil Wajah
               </Button>
               <Button
-                disabled={!descriptor || isCapturing || isStartingCamera}
+                disabled={!descriptor || isCapturing || isStartingCamera || selectedEmployeeIsInactive}
                 icon={Save}
                 isLoading={isSaving}
                 loadingText="Menyimpan..."
@@ -459,8 +542,8 @@ function FaceRegistrationPage() {
           description="Pastikan identitas pegawai sesuai sebelum menyimpan data wajah."
           title="Informasi Pegawai"
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-            <label className="ui-field md:col-span-3" htmlFor="face-employee">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+            <label className="ui-field md:col-span-4" htmlFor="face-employee">
               <span className="ui-field-label">Pilih Pegawai</span>
               <select
                 className="ui-input"
@@ -471,7 +554,7 @@ function FaceRegistrationPage() {
               >
                 {employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {employee.id} - {employee.name}
+                    {employee.id} - {employee.name}{employee.status === 'Nonaktif' ? ' - Nonaktif' : ''}
                   </option>
                 ))}
               </select>
@@ -485,12 +568,18 @@ function FaceRegistrationPage() {
               <strong className="text-base text-brand-brown">{selectedEmployee?.role || '-'}</strong>
             </div>
             <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
+              <span className="text-[13px] font-extrabold text-brand-brown-muted">Status Pegawai</span>
+              <StatusBadge tone={isEmployeeActive(selectedEmployee) ? 'success' : 'warning'}>
+                {selectedEmployee?.status || '-'}
+              </StatusBadge>
+            </div>
+            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
               <span className="text-[13px] font-extrabold text-brand-brown-muted">Status Wajah</span>
               <StatusBadge tone={selectedEmployee?.faceStatus === 'Terdaftar' ? 'success' : 'warning'}>
                 {selectedEmployee?.faceStatus || 'Belum'}
               </StatusBadge>
             </div>
-            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5 md:col-span-3">
+            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5 md:col-span-4">
               <span className="text-[13px] font-extrabold text-brand-brown-muted">Descriptor</span>
               <strong className="text-base text-brand-brown">
                 {descriptor

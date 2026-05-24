@@ -2,6 +2,7 @@ const { supabase } = require('../config')
 
 const DESCRIPTOR_LENGTH = 128
 const DEFAULT_MATCH_THRESHOLD = 0.6
+const ACTIVE_EMPLOYEE_STATUS = 'Aktif'
 
 function createHttpError(message, statusCode) {
   const err = new Error(message)
@@ -129,6 +130,7 @@ function toFaceStatus(employee, faceMap) {
     id: employee.id,
     name: employee.nama,
     role: employee.jabatan,
+    status: employee.status || ACTIVE_EMPLOYEE_STATUS,
     faceStatus: hasValidDescriptor ? 'Terdaftar' : 'Belum',
     registeredAt: hasValidDescriptor
       ? faceData.updated_at || faceData.created_at || null
@@ -147,15 +149,24 @@ function calculateDistance(left, right) {
   return Math.sqrt(sum)
 }
 
-async function ensureEmployeeExists(employeeId) {
+async function ensureEmployeeExists(employeeId, options = {}) {
+  const {
+    inactiveMessage = 'Pegawai nonaktif tidak dapat menggunakan fitur wajah',
+    requireActive = false,
+  } = options
+
   const { data, error } = await supabase
     .from('pegawai')
-    .select('id, nama, jabatan')
+    .select('id, nama, jabatan, status')
     .eq('id', employeeId)
     .single()
 
   if (error || !data) {
     throw createHttpError('Pegawai tidak ditemukan', 404)
+  }
+
+  if (requireActive && data.status !== ACTIVE_EMPLOYEE_STATUS) {
+    throw createHttpError(inactiveMessage, 403)
   }
 
   return data
@@ -176,7 +187,10 @@ async function verifyFace(payload = {}) {
     .eq('status', 'Terdaftar')
 
   if (expectedEmployeeId) {
-    await ensureEmployeeExists(expectedEmployeeId)
+    await ensureEmployeeExists(expectedEmployeeId, {
+      inactiveMessage: 'Pegawai nonaktif tidak dapat melakukan verifikasi wajah',
+      requireActive: true,
+    })
     faceQuery = faceQuery.eq('pegawai_id', expectedEmployeeId)
   }
 
@@ -224,7 +238,10 @@ async function verifyFace(payload = {}) {
     }
   }
 
-  const employee = await ensureEmployeeExists(bestMatch.pegawaiId)
+  const employee = await ensureEmployeeExists(bestMatch.pegawaiId, {
+    inactiveMessage: 'Pegawai nonaktif tidak dapat melakukan verifikasi wajah',
+    requireActive: true,
+  })
 
   return {
     matched: true,
@@ -232,6 +249,7 @@ async function verifyFace(payload = {}) {
       id: employee.id,
       name: employee.nama,
       role: employee.jabatan,
+      status: employee.status,
     },
     employeeId: employee.id,
     employeeName: employee.nama,
@@ -246,7 +264,7 @@ async function getRegistrationStatus() {
 
   const { data: employees, error: employeeError } = await supabase
     .from('pegawai')
-    .select('id, nama, jabatan')
+    .select('id, nama, jabatan, status')
     .order('created_at', { ascending: true })
 
   if (employeeError) {
@@ -293,7 +311,10 @@ async function registerFace(payload = {}) {
 
   requireSupabase()
 
-  const employee = await ensureEmployeeExists(employeeId)
+  const employee = await ensureEmployeeExists(employeeId, {
+    inactiveMessage: 'Pegawai nonaktif tidak dapat didaftarkan wajah',
+    requireActive: true,
+  })
   const now = new Date().toISOString()
 
   const { data, error } = await supabase

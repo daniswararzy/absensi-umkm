@@ -1,13 +1,16 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { MainLayout, ProtectedRoute } from '../components/layout'
-import AttendancePage from '../pages/AttendancePage'
-import DashboardPage from '../pages/DashboardPage'
-import EmployeesPage from '../pages/EmployeesPage'
-import EmployeeFormPage from '../pages/EmployeeFormPage'
-import FaceRegistrationPage from '../pages/FaceRegistrationPage'
-import LoginPage from '../pages/LoginPage'
-import NotFoundPage from '../pages/NotFoundPage'
-import ReportsPage from '../pages/ReportsPage'
+import { PageLoader } from '../components/ui'
+
+const AttendancePage = lazy(() => import('../pages/AttendancePage'))
+const DashboardPage = lazy(() => import('../pages/DashboardPage'))
+const EmployeesPage = lazy(() => import('../pages/EmployeesPage'))
+const EmployeeFormPage = lazy(() => import('../pages/EmployeeFormPage'))
+const FaceRegistrationPage = lazy(() => import('../pages/FaceRegistrationPage'))
+const LoginPage = lazy(() => import('../pages/LoginPage'))
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
+const ReportsPage = lazy(() => import('../pages/ReportsPage'))
 
 function LegacyEmployeeEditRedirect() {
   const { employeeId } = useParams()
@@ -18,40 +21,42 @@ function LegacyEmployeeEditRedirect() {
 function AppRoutes() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* Public employee flow: open attendance directly, without login. */}
-        <Route index element={<Navigate to="/absensi" replace />} />
-        <Route path="absensi" element={<AttendancePage />} />
-        {/* Legacy employee dashboard route kept as a safe redirect. */}
-        <Route path="dashboard-pegawai" element={<Navigate to="/absensi" replace />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public employee flow: open attendance directly, without login. */}
+          <Route index element={<Navigate to="/absensi" replace />} />
+          <Route path="absensi" element={<AttendancePage />} />
+          {/* Legacy employee dashboard route kept as a safe redirect. */}
+          <Route path="dashboard-pegawai" element={<Navigate to="/absensi" replace />} />
 
-        {/* Public admin login + legacy admin redirects. */}
-        <Route path="admin/login" element={<LoginPage />} />
-        <Route path="login" element={<Navigate to="/admin/login" replace />} />
-        <Route path="dashboard" element={<Navigate to="/admin/dashboard" replace />} />
-        <Route path="pegawai" element={<Navigate to="/admin/pegawai" replace />} />
-        <Route path="pegawai/tambah" element={<Navigate to="/admin/pegawai/tambah" replace />} />
-        <Route path="pegawai/:employeeId/edit" element={<LegacyEmployeeEditRedirect />} />
-        <Route path="karyawan" element={<Navigate to="/admin/pegawai" replace />} />
-        <Route path="registrasi-wajah" element={<Navigate to="/admin/registrasi-wajah" replace />} />
-        <Route path="laporan" element={<Navigate to="/admin/laporan" replace />} />
+          {/* Public admin login + legacy admin redirects. */}
+          <Route path="admin/login" element={<LoginPage />} />
+          <Route path="login" element={<Navigate to="/admin/login" replace />} />
+          <Route path="dashboard" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="pegawai" element={<Navigate to="/admin/pegawai" replace />} />
+          <Route path="pegawai/tambah" element={<Navigate to="/admin/pegawai/tambah" replace />} />
+          <Route path="pegawai/:employeeId/edit" element={<LegacyEmployeeEditRedirect />} />
+          <Route path="karyawan" element={<Navigate to="/admin/pegawai" replace />} />
+          <Route path="registrasi-wajah" element={<Navigate to="/admin/registrasi-wajah" replace />} />
+          <Route path="laporan" element={<Navigate to="/admin/laporan" replace />} />
 
-        {/* Admin routes — requires admin auth */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="admin" element={<MainLayout />}>
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="pegawai" element={<EmployeesPage />} />
-            <Route path="pegawai/tambah" element={<EmployeeFormPage />} />
-            <Route path="pegawai/:employeeId/edit" element={<EmployeeFormPage />} />
-            <Route path="karyawan" element={<Navigate to="/admin/pegawai" replace />} />
-            <Route path="registrasi-wajah" element={<FaceRegistrationPage />} />
-            <Route path="laporan" element={<ReportsPage />} />
+          {/* Admin routes — requires admin auth */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="admin" element={<MainLayout />}>
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="dashboard" element={<DashboardPage />} />
+              <Route path="pegawai" element={<EmployeesPage />} />
+              <Route path="pegawai/tambah" element={<EmployeeFormPage />} />
+              <Route path="pegawai/:employeeId/edit" element={<EmployeeFormPage />} />
+              <Route path="karyawan" element={<Navigate to="/admin/pegawai" replace />} />
+              <Route path="registrasi-wajah" element={<FaceRegistrationPage />} />
+              <Route path="laporan" element={<ReportsPage />} />
+            </Route>
           </Route>
-        </Route>
 
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

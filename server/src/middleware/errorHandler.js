@@ -9,7 +9,7 @@ function errorHandler(err, req, res, _next) {
   const message = err.message || 'Terjadi kesalahan internal'
 
   // Log the error in development
-  if (process.env.NODE_ENV !== 'production') {
+  if (!['production', 'test'].includes(process.env.NODE_ENV)) {
     console.error(`[ERROR] ${req.method} ${req.originalUrl} →`, err.message)
   }
 
