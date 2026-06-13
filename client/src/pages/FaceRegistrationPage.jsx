@@ -7,37 +7,12 @@ import {
   PageHeader,
   Skeleton,
   StatusBadge,
-  Table,
 } from '../components/ui'
 import * as faceService from '../services/faceService'
 
 const MODEL_URL = '/models'
 const DESCRIPTOR_LENGTH = 128
 let faceApiModulePromise = null
-
-const faceColumns = [
-  { key: 'name', header: 'Nama Pegawai' },
-  { key: 'role', header: 'Jabatan' },
-  {
-    key: 'status',
-    header: 'Status Pegawai',
-    render: (row) => (
-      <StatusBadge tone={row.status === 'Aktif' ? 'success' : 'warning'}>
-        {row.status}
-      </StatusBadge>
-    ),
-  },
-  { key: 'id', header: 'ID Pegawai' },
-  {
-    key: 'faceStatus',
-    header: 'Status Sistem',
-    render: (row) => (
-      <StatusBadge tone={row.faceStatus === 'Terdaftar' ? 'success' : 'warning'}>
-        {row.faceStatus}
-      </StatusBadge>
-    ),
-  },
-]
 
 function loadFaceApi() {
   if (!faceApiModulePromise) {
@@ -51,24 +26,40 @@ function stopStream(stream) {
   stream?.getTracks().forEach((track) => track.stop())
 }
 
-function getStatusTone(status) {
-  if (status === 'Siap' || status === 'Aktif' || status === 'Terdeteksi') {
-    return 'success'
-  }
-
-  if (status === 'Gagal' || status === 'Belum') {
-    return 'danger'
-  }
-
-  if (status === 'Nonaktif') {
-    return 'warning'
-  }
-
-  return 'info'
-}
-
 function isEmployeeActive(employee) {
   return employee?.status === 'Aktif'
+}
+
+function RegistrationEmployeeTile({
+  employee,
+  isSelected,
+  onSelect,
+}) {
+  return (
+    <button
+      aria-pressed={isSelected}
+      className={`face-registration-tile ${isSelected ? 'selected' : ''}`}
+      onClick={() => onSelect(employee.id)}
+      type="button"
+    >
+      <span className="face-registration-tile-main">
+        <strong>{employee.name}</strong>
+        <span>
+          {employee.role || '-'}
+          {' · '}
+          {employee.id}
+        </span>
+      </span>
+      <span className="face-registration-tile-status">
+        <StatusBadge tone={employee.status === 'Aktif' ? 'success' : 'warning'}>
+          {employee.status}
+        </StatusBadge>
+        <StatusBadge tone={employee.faceStatus === 'Terdaftar' ? 'success' : 'warning'}>
+          {employee.faceStatus}
+        </StatusBadge>
+      </span>
+    </button>
+  )
 }
 
 function normalizeDescriptor(value) {
@@ -402,29 +393,6 @@ function FaceRegistrationPage() {
     setFeedback(null)
   }
 
-  const systemStatuses = [
-    {
-      label: 'Model face-api.js',
-      status: modelError ? 'Gagal' : isModelLoading ? 'Memuat' : 'Siap',
-    },
-    {
-      label: 'Kamera',
-      status: isStartingCamera ? 'Memuat' : isCameraActive ? 'Aktif' : 'Belum',
-    },
-    {
-      label: 'Descriptor wajah',
-      status: isCapturing ? 'Memuat' : descriptor ? 'Terdeteksi' : 'Belum',
-    },
-    {
-      label: 'Pegawai terpilih',
-      status: selectedEmployee ? selectedEmployee.name : 'Belum',
-    },
-    {
-      label: 'Status pegawai',
-      status: selectedEmployee?.status || 'Belum',
-    },
-  ]
-
   if (isLoading) {
     return (
       <>
@@ -464,7 +432,7 @@ function FaceRegistrationPage() {
       <section className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(280px,0.7fr)_minmax(0,1fr)]">
         <Card title="Area Kamera">
           <div className="grid gap-4">
-            <div className="relative grid aspect-[4/3] place-items-center overflow-hidden rounded-[var(--radius-md)] border border-dashed border-[#f1d37a] bg-brand-yellow-soft">
+            <div className="relative grid aspect-[4/3] place-items-center overflow-hidden rounded-[var(--radius-md)] border border-dashed border-brand-blue bg-brand-blue-soft">
               <video
                 aria-label="Pratinjau kamera registrasi wajah"
                 autoPlay
@@ -473,14 +441,20 @@ function FaceRegistrationPage() {
                 playsInline
                 ref={videoRef}
               />
+              {isCameraActive && !isCapturing && !isSaving ? (
+                <div className="afc-guide" aria-hidden="true">
+                  <div className="afc-oval" />
+                  <span className="afc-guide-label">Posisikan wajah di dalam area</span>
+                </div>
+              ) : null}
               {!isCameraActive ? (
-                <div className="absolute inset-0 grid place-items-center bg-brand-yellow-soft p-4 text-center">
+                <div className="absolute inset-0 grid place-items-center bg-brand-blue-soft p-4 text-center">
                   <div className="grid justify-items-center gap-2">
                     <ScanFace
                       aria-hidden="true"
-                      className="h-14 w-14 stroke-[1.8] text-brand-brown"
+                      className="h-14 w-14 stroke-[1.6] text-brand-heading"
                     />
-                    <strong className="text-brand-brown">Kamera belum aktif</strong>
+                    <strong className="text-brand-heading">Kamera belum aktif</strong>
                   </div>
                 </div>
               ) : null}
@@ -559,29 +533,29 @@ function FaceRegistrationPage() {
                 ))}
               </select>
             </label>
-            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-              <span className="text-[13px] font-extrabold text-brand-brown-muted">Nama Pegawai</span>
-              <strong className="text-base text-brand-brown">{selectedEmployee?.name || '-'}</strong>
+            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted p-3.5">
+              <span className="text-[13px] font-extrabold text-brand-muted">Nama Pegawai</span>
+              <strong className="text-base text-brand-heading">{selectedEmployee?.name || '-'}</strong>
             </div>
-            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-              <span className="text-[13px] font-extrabold text-brand-brown-muted">Jabatan</span>
-              <strong className="text-base text-brand-brown">{selectedEmployee?.role || '-'}</strong>
+            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted p-3.5">
+              <span className="text-[13px] font-extrabold text-brand-muted">Jabatan</span>
+              <strong className="text-base text-brand-heading">{selectedEmployee?.role || '-'}</strong>
             </div>
-            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-              <span className="text-[13px] font-extrabold text-brand-brown-muted">Status Pegawai</span>
+            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted p-3.5">
+              <span className="text-[13px] font-extrabold text-brand-muted">Status Pegawai</span>
               <StatusBadge tone={isEmployeeActive(selectedEmployee) ? 'success' : 'warning'}>
                 {selectedEmployee?.status || '-'}
               </StatusBadge>
             </div>
-            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-              <span className="text-[13px] font-extrabold text-brand-brown-muted">Status Wajah</span>
+            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted p-3.5">
+              <span className="text-[13px] font-extrabold text-brand-muted">Status Wajah</span>
               <StatusBadge tone={selectedEmployee?.faceStatus === 'Terdaftar' ? 'success' : 'warning'}>
                 {selectedEmployee?.faceStatus || 'Belum'}
               </StatusBadge>
             </div>
-            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5 md:col-span-4">
-              <span className="text-[13px] font-extrabold text-brand-brown-muted">Descriptor</span>
-              <strong className="text-base text-brand-brown">
+            <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted p-3.5 md:col-span-4">
+              <span className="text-[13px] font-extrabold text-brand-muted">Descriptor</span>
+              <strong className="text-base text-brand-heading">
                 {descriptor
                   ? `128 nilai tersimpan sementara${detectionScore ? `, confidence ${(detectionScore * 100).toFixed(1)}%` : ''}`
                   : 'Belum diambil'}
@@ -591,35 +565,30 @@ function FaceRegistrationPage() {
         </Card>
       </section>
 
-      <section className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
-        <Card
-          description="Status minimum proses kamera, model, dan descriptor."
-          title="Status Sistem"
-        >
-          <ul className="grid gap-3 p-0">
-            {systemStatuses.map((item) => (
-              <li
-                className="flex min-h-[54px] items-center justify-between gap-3 rounded-[var(--radius-md)] border border-brand-border bg-brand-page px-3.5 py-3 font-bold leading-normal text-brand-brown"
-                key={item.label}
-              >
-                <span>{item.label}</span>
-                <StatusBadge tone={getStatusTone(item.status)}>
-                  {item.status}
-                </StatusBadge>
-              </li>
-            ))}
-          </ul>
-        </Card>
+      <section>
         <Card
           description="Pantau pegawai yang sudah dan belum memiliki data wajah."
-          title="Data Registrasi Wajah"
+          title="Data Registrasi Pegawai"
         >
-          <Table
-            columns={faceColumns}
-            data={employees}
-            emptyMessage="Data pegawai tidak ditemukan"
-            getRowKey={(row) => row.id}
-          />
+          {employees.length > 0 ? (
+            <div className="face-registration-list" role="list">
+              {employees.map((employee) => (
+                <RegistrationEmployeeTile
+                  employee={employee}
+                  isSelected={employee.id === selectedEmployeeId}
+                  key={employee.id}
+                  onSelect={(employeeId) => {
+                    setSelectedEmployeeId(employeeId)
+                    setDescriptor(null)
+                    setDetectionScore(null)
+                    setFeedback(null)
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="face-registration-empty">Data pegawai tidak ditemukan</p>
+          )}
         </Card>
       </section>
     </>

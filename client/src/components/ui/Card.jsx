@@ -1,6 +1,6 @@
-function Card({ actions, children, className = '', description, title }) {
+function Card({ actions, children, className = '', description, title, ...rest }) {
   return (
-    <section className={`ui-card ${className}`.trim()}>
+    <section className={`ui-card ${className}`.trim()} {...rest}>
       {title || description || actions ? (
         <header className="ui-card-header">
           <div className="ui-card-header-copy">

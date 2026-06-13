@@ -7,11 +7,7 @@ const DESCRIPTOR_LENGTH = 128
 
 const testEnv = {
   attendance: {
-    checkInNormalUntilTime: '23:00',
-    checkOutTime: '00:00',
     closeTime: '23:59',
-    lateAfterTime: '23:59',
-    lateToleranceMinutes: 59,
     openTime: '00:00',
   },
   jwt: {

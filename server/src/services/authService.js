@@ -8,6 +8,30 @@
 const bcrypt = require('bcrypt')
 const { supabase } = require('../config')
 
+function createAuthError(message, statusCode, cause) {
+  const err = new Error(message)
+  err.statusCode = statusCode
+
+  if (cause) {
+    err.cause = cause
+  }
+
+  return err
+}
+
+function logAuthDatabaseError(error) {
+  if (process.env.NODE_ENV === 'test') {
+    return
+  }
+
+  console.error('[AUTH_DB_ERROR]', {
+    code: error?.code,
+    details: error?.details,
+    hint: error?.hint,
+    message: error?.message,
+  })
+}
+
 /**
  * Find a user by username and verify password.
  *
@@ -18,15 +42,11 @@ const { supabase } = require('../config')
  */
 async function verifyCredentials(username, password) {
   if (!username || !password) {
-    const err = new Error('Username dan password wajib diisi')
-    err.statusCode = 400
-    throw err
+    throw createAuthError('Username dan password wajib diisi', 400)
   }
 
   if (!supabase) {
-    const err = new Error('Database belum dikonfigurasi')
-    err.statusCode = 503
-    throw err
+    throw createAuthError('Database belum dikonfigurasi', 503)
   }
 
   // Lookup user
@@ -37,30 +57,27 @@ async function verifyCredentials(username, password) {
     .single()
 
   if (error && error.code !== 'PGRST116') {
-    const err = new Error('Database auth belum bisa dihubungi')
-    err.statusCode = 503
-    throw err
+    logAuthDatabaseError(error)
+    throw createAuthError(
+      'Login admin belum dapat diproses karena koneksi database auth bermasalah. Periksa konfigurasi Supabase dan tabel users.',
+      503,
+      error,
+    )
   }
 
   if (!user) {
-    const err = new Error('Username atau password salah')
-    err.statusCode = 401
-    throw err
+    throw createAuthError('Username atau password salah', 401)
   }
 
   // Compare password
   const isMatch = await bcrypt.compare(password, user.password)
 
   if (!isMatch) {
-    const err = new Error('Username atau password salah')
-    err.statusCode = 401
-    throw err
+    throw createAuthError('Username atau password salah', 401)
   }
 
   if (user.role !== 'admin') {
-    const err = new Error('Login hanya tersedia untuk admin')
-    err.statusCode = 403
-    throw err
+    throw createAuthError('Login hanya tersedia untuk admin', 403)
   }
 
   // Return user without password hash

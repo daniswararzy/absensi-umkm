@@ -97,6 +97,14 @@ function getAttendanceErrorMessage(error) {
     return 'Wajah tidak cocok dengan data pegawai yang terdaftar.'
   }
 
+  if (normalizedMessage.includes('berada di luar area kantor') || normalizedMessage.includes('luar area kantor')) {
+    return message
+  }
+
+  if (normalizedMessage.includes('data lokasi') || normalizedMessage.includes('latitude')) {
+    return message
+  }
+
   if (error?.status >= 500) {
     return 'Server sedang bermasalah. Silakan coba lagi.'
   }
@@ -256,7 +264,7 @@ async function getEmployeeAttendanceToday(employeeId) {
 /**
  * Record check-in for an employee.
  *
- * @param {{ employeeId: string, method?: string }} payload
+ * @param {{ employeeId: string, descriptor: number[], method?: string, latitude: number, longitude: number }} payload
  * @returns {Promise<object>} — the created attendance record
  */
 async function checkIn(payload) {
@@ -266,7 +274,7 @@ async function checkIn(payload) {
 /**
  * Record check-out for an employee.
  *
- * @param {{ employeeId: string, attendanceId?: string }} payload
+ * @param {{ employeeId: string, descriptor: number[], attendanceId?: string, latitude: number, longitude: number }} payload
  * @returns {Promise<object>} — the updated attendance record
  */
 async function checkOut(payload) {

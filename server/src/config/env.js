@@ -19,24 +19,38 @@ function readEnv(key) {
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/
 const defaultAttendance = {
-  openTime: '07:00',
-  checkInNormalUntilTime: '08:00',
-  lateToleranceMinutes: 15,
-  checkOutTime: '16:00',
+  openTime: '09:00',
   closeTime: '22:00',
+}
+
+const LAT_LON_PATTERN = /^-?\d{1,3}(\.\d+)?$/
+const defaultOffice = {
+  latitude: null,
+  longitude: null,
+  radiusMeters: 200,
+}
+
+function parseCoordinate(key, fallback) {
+  const value = readEnv(key)
+
+  if (!value) {
+    return fallback
+  }
+
+  const num = parseFloat(value)
+
+  if (!LAT_LON_PATTERN.test(value) || !Number.isFinite(num)) {
+    console.warn(`[WARN] ${key} tidak valid, geolocation dinonaktifkan`)
+    return fallback
+  }
+
+  return num
 }
 
 function getTimeMinutes(time) {
   const [hour, minute] = time.split(':').map((value) => Number(value))
 
   return (hour * 60) + minute
-}
-
-function formatTimeMinutes(minutes) {
-  const hour = String(Math.floor(minutes / 60)).padStart(2, '0')
-  const minute = String(minutes % 60).padStart(2, '0')
-
-  return `${hour}:${minute}`
 }
 
 function normalizeTimeEnv(key, fallback) {
@@ -55,48 +69,6 @@ function normalizeTimeEnv(key, fallback) {
   return value
 }
 
-function normalizeIntegerEnv(key, fallback, { max, min }) {
-  const value = readEnv(key)
-
-  if (!value) {
-    return fallback
-  }
-
-  const parsedValue = Number(value)
-
-  if (
-    !Number.isInteger(parsedValue)
-    || parsedValue < min
-    || parsedValue > max
-  ) {
-    console.warn(`[WARN] ${key} tidak valid, memakai default ${fallback}`)
-
-    return fallback
-  }
-
-  return parsedValue
-}
-
-function deriveLateAfterTime(checkInNormalUntilTime, lateToleranceMinutes) {
-  const lateAfterMinutes = getTimeMinutes(checkInNormalUntilTime) + lateToleranceMinutes
-
-  if (lateAfterMinutes >= 24 * 60) {
-    return ''
-  }
-
-  return formatTimeMinutes(lateAfterMinutes)
-}
-
-function buildAttendanceConfig(config) {
-  return {
-    ...config,
-    lateAfterTime: deriveLateAfterTime(
-      config.checkInNormalUntilTime,
-      config.lateToleranceMinutes,
-    ),
-  }
-}
-
 const nodeEnv = readEnv('NODE_ENV') || 'development'
 const defaultClientUrls = ['http://localhost:5173', 'http://127.0.0.1:5173']
 const configuredClientUrls = readEnv('CLIENT_URL')
@@ -112,33 +84,15 @@ const clientUrls = configuredClientUrls.length > 0
       ),
     ]
   : defaultClientUrls
-const configuredAttendance = buildAttendanceConfig({
+const configuredAttendance = {
   openTime: normalizeTimeEnv('ATTENDANCE_OPEN_TIME', defaultAttendance.openTime),
-  checkInNormalUntilTime: normalizeTimeEnv(
-    'ATTENDANCE_CHECK_IN_NORMAL_UNTIL',
-    defaultAttendance.checkInNormalUntilTime,
-  ),
-  lateToleranceMinutes: normalizeIntegerEnv(
-    'ATTENDANCE_LATE_TOLERANCE_MINUTES',
-    defaultAttendance.lateToleranceMinutes,
-    { min: 0, max: 240 },
-  ),
-  checkOutTime: normalizeTimeEnv('ATTENDANCE_CHECK_OUT_TIME', defaultAttendance.checkOutTime),
   closeTime: normalizeTimeEnv('ATTENDANCE_CLOSE_TIME', defaultAttendance.closeTime),
-})
-const defaultAttendanceConfig = buildAttendanceConfig(defaultAttendance)
+}
 const attendanceOrderIsValid = getTimeMinutes(configuredAttendance.openTime)
-  <= getTimeMinutes(configuredAttendance.checkInNormalUntilTime)
-  && Boolean(configuredAttendance.lateAfterTime)
-  && getTimeMinutes(configuredAttendance.checkInNormalUntilTime)
-  <= getTimeMinutes(configuredAttendance.lateAfterTime)
-  && getTimeMinutes(configuredAttendance.lateAfterTime)
-  <= getTimeMinutes(configuredAttendance.checkOutTime)
-  && getTimeMinutes(configuredAttendance.checkOutTime)
-  <= getTimeMinutes(configuredAttendance.closeTime)
+  < getTimeMinutes(configuredAttendance.closeTime)
 const attendance = attendanceOrderIsValid
   ? configuredAttendance
-  : defaultAttendanceConfig
+  : defaultAttendance
 
 if (!attendanceOrderIsValid) {
   console.warn('[WARN] Konfigurasi jam absensi tidak berurutan, memakai default.')
@@ -155,12 +109,30 @@ if (nodeEnv === 'production' && (!configuredJwtSecret || unsafeJwtSecrets.has(co
   throw new Error('JWT_SECRET wajib diisi dengan nilai aman untuk production.')
 }
 
+const officeLatitude = parseCoordinate('OFFICE_LATITUDE', defaultOffice.latitude)
+const officeLongitude = parseCoordinate('OFFICE_LONGITUDE', defaultOffice.longitude)
+const officeRadiusRaw = parseInt(readEnv('OFFICE_RADIUS_METERS'), 10)
+const officeRadius = Number.isFinite(officeRadiusRaw) && officeRadiusRaw > 0
+  ? officeRadiusRaw
+  : defaultOffice.radiusMeters
+const officeConfigured = officeLatitude !== null && officeLongitude !== null
+
+if (!officeConfigured) {
+  console.warn('[WARN] OFFICE_LATITUDE / OFFICE_LONGITUDE belum diisi. Validasi geolocation dinonaktifkan.')
+}
+
 const env = {
   port: parseInt(readEnv('PORT'), 10) || 5050,
   nodeEnv,
   clientUrl: clientUrls[0],
   clientUrls,
   attendance,
+  office: {
+    latitude: officeLatitude,
+    longitude: officeLongitude,
+    radiusMeters: officeRadius,
+    configured: officeConfigured,
+  },
   jwt: {
     secret: configuredJwtSecret || 'absensi_umkm_dev_secret',
     expiresIn: readEnv('JWT_EXPIRES_IN') || '7d',

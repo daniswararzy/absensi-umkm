@@ -21,7 +21,7 @@
 }
 
 .ui-card:hover {
-  border-color: #ead8ad;
+  border-color: var(--color-primary-soft);
 }
 
 .ui-card-header {
@@ -70,7 +70,7 @@
   justify-content: center;
   gap: 8px;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   font-weight: 800;
   line-height: 1.2;
   text-decoration: none;
@@ -92,7 +92,7 @@
 
 .ui-button:focus-visible,
 .ui-input:focus-visible {
-  outline: 3px solid rgba(246, 195, 67, 0.42);
+  outline: 3px solid var(--color-focus-ring, rgba(255, 199, 0, 0.60));
   outline-offset: 2px;
 }
 
@@ -111,14 +111,15 @@
 
 /* Button variants */
 .ui-button.primary {
-  border-color: #f1d37a;
+  border-color: var(--color-primary);
   color: var(--color-primary-contrast);
   background: var(--color-primary);
   box-shadow: var(--shadow-subtle);
 }
 
 .ui-button.primary:hover {
-  border-color: var(--color-heading);
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
 }
 
 .ui-button.secondary {
@@ -134,13 +135,13 @@
 
 .ui-button.secondary:hover,
 .ui-button.ghost:hover {
-  border-color: #f1d37a;
-  color: var(--color-primary-contrast);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
   background: var(--color-primary-soft);
 }
 
 .ui-button:disabled {
-  color: #9a9188;
+  color: var(--color-text-placeholder);
   background: var(--color-neutral-soft);
   cursor: not-allowed;
 }
@@ -155,7 +156,7 @@
   flex: 0 0 auto;
   width: 18px;
   height: 18px;
-  stroke-width: 2.4;
+  stroke-width: 1.8;
 }
 
 .ui-button-label {
@@ -188,11 +189,11 @@
   border-radius: var(--radius-md);
   color: var(--color-heading);
   background: var(--color-surface);
-  box-shadow: 0 1px 0 rgba(58, 36, 24, 0.03);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
 }
 
 .ui-input::placeholder {
-  color: #a69c92;
+  color: var(--color-text-placeholder);
 }
 
 .ui-input.error {
@@ -238,31 +239,31 @@
   flex: 0 0 auto;
   width: 15px;
   height: 15px;
-  stroke-width: 2.5;
+  stroke-width: 1.8;
 }
 
 .status-badge.success {
-  border-color: #f1d37a;
+  border-color: var(--color-success-border);
   color: var(--color-success);
   background: var(--color-success-soft);
 }
 
 .status-badge.warning {
-  border-color: #e7c892;
+  border-color: var(--color-warning-border);
   color: var(--color-warning);
   background: var(--color-warning-soft);
 }
 
 .status-badge.danger {
-  border-color: #f4b8b0;
+  border-color: var(--color-danger-border);
   color: var(--color-danger);
   background: var(--color-danger-soft);
 }
 
 .status-badge.info {
-  border-color: #f1d37a;
-  color: var(--color-primary-contrast);
-  background: var(--color-primary-soft);
+  border-color: var(--color-info-border);
+  color: var(--color-info);
+  background: var(--color-info-soft);
 }
 
 /* ----- Table ----- */
@@ -367,7 +368,7 @@
   display: grid;
   place-items: center;
   padding: var(--space-md);
-  background: rgba(58, 36, 24, 0.48);
+  background: var(--color-overlay);
   animation: modal-fade-in 0.2s ease;
 }
 
@@ -536,8 +537,8 @@
   display: inline-block;
   border-radius: 50%;
   border-style: solid;
-  border-color: rgba(58, 36, 24, 0.12);
-  border-top-color: var(--color-primary, #f6c343);
+  border-color: var(--color-overlay-light, rgba(17, 24, 39, 0.10));
+  border-top-color: var(--color-primary, #FFC700);
   animation: ui-spin 0.7s linear infinite;
   flex-shrink: 0;
 }
@@ -580,7 +581,7 @@
 
 .ui-button.loading {
   position: relative;
-  color: #9a9188;
+  color: var(--color-text-placeholder);
   background: var(--color-neutral-soft);
   cursor: wait;
   pointer-events: none;
@@ -593,8 +594,8 @@
 }
 
 .ui-button .ui-button-spinner {
-  border-color: rgba(58, 36, 24, 0.18);
-  border-top-color: var(--color-heading, #3a2418);
+  border-color: var(--color-overlay-light, rgba(17, 24, 39, 0.12));
+  border-top-color: var(--color-heading, #111827);
 }
 
 /* ----- Skeleton ----- */
@@ -606,12 +607,12 @@
 }
 
 .ui-skeleton {
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md, 14px);
   background: linear-gradient(
     90deg,
-    #ede8e2 0%,
-    #f6f4f1 40%,
-    #ede8e2 80%
+    #F0E9D2 0%,
+    #FFFDF5 40%,
+    #F0E9D2 80%
   );
   background-size: 300% 100%;
   animation: ui-shimmer 1.6s ease-in-out infinite;
@@ -633,19 +634,19 @@
 .ui-skeleton.heading {
   height: 28px;
   width: 45%;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm, 10px);
 }
 
 .ui-skeleton.card {
   height: 140px;
   width: 100%;
-  border: 1px solid #e6dfd7;
+  border: 1px solid var(--color-border);
 }
 
 .ui-skeleton.metric {
   height: 164px;
   width: 100%;
-  border: 1px solid #e6dfd7;
+  border: 1px solid var(--color-border);
 }
 
 .ui-skeleton.table-row {
@@ -682,7 +683,7 @@
 }
 
 .ui-page-loader-message {
-  color: var(--color-text-muted, #7a7168);
+  color: var(--color-text-muted, #64748B);
   font-size: 14px;
   font-weight: 700;
 }
@@ -700,22 +701,22 @@
   justify-content: space-between;
   gap: 10px;
   padding: 12px 14px;
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-md, 14px);
   border: 1px solid;
   font-weight: 700;
   animation: ui-alert-fade 0.3s ease;
 }
 
 .ui-alert-banner.success {
-  border-color: #f1d37a;
-  background: var(--color-success-soft, #fff0b3);
-  color: var(--color-success, #6f4a00);
+  border-color: var(--color-success-border);
+  background: var(--color-success-soft);
+  color: var(--color-success);
 }
 
 .ui-alert-banner.error {
-  border-color: #f4b8b0;
-  background: var(--color-danger-soft, #fde9e7);
-  color: var(--color-danger, #9f2f21);
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 
 .ui-alert-banner-content {
@@ -731,7 +732,7 @@
   width: 18px;
   height: 18px;
   margin-top: 1px;
-  stroke-width: 2.5;
+  stroke-width: 1.8;
 }
 
 .ui-alert-banner-message {
@@ -749,7 +750,7 @@
   height: 28px;
   place-items: center;
   border: none;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm, 10px);
   background: transparent;
   color: inherit;
   cursor: pointer;

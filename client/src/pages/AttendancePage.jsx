@@ -7,13 +7,17 @@ import {
   Clock3,
   LogIn,
   LogOut,
+  MapPin,
+  MapPinOff,
   RefreshCcw,
   ScanFace,
+  UserCheck,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { AlertBanner, Button, Card, Modal, Spinner, StatusBadge } from '../components/ui'
+import { AlertBanner, Button, Modal, Spinner, StatusBadge } from '../components/ui'
+import faceScanPlaceholder from '../assets/face-scan-placeholder.png'
 import * as attendanceService from '../services/attendanceService'
 import * as faceService from '../services/faceService'
+import { useGeolocation } from '../utils/useGeolocation'
 
 const MODEL_URL = '/models'
 const DESCRIPTOR_LENGTH = 128
@@ -158,6 +162,23 @@ function getVerificationStatusTone(status) {
   return 'warning'
 }
 
+function getGeoStatusText(status) {
+  if (status === 'requesting') return 'Mengambil lokasi...'
+  if (status === 'granted') return 'Lokasi terdeteksi'
+  if (status === 'denied') return 'Izin lokasi ditolak'
+  if (status === 'unavailable') return 'Lokasi tidak tersedia'
+
+  return 'Lokasi belum diizinkan'
+}
+
+function getGeoStatusTone(status) {
+  if (status === 'requesting') return 'info'
+  if (status === 'granted') return 'success'
+  if (status === 'denied' || status === 'unavailable') return 'danger'
+
+  return 'warning'
+}
+
 function getSaveStatusTone(status) {
   if (status === 'saving') return 'info'
   if (status === 'success') return 'success'
@@ -166,12 +187,273 @@ function getSaveStatusTone(status) {
   return 'warning'
 }
 
+// ── Location Status Card ────────────────────────────────────────────────────
+function LocationStatusCard({ geoState, onRequest }) {
+  const tone = getGeoStatusTone(geoState.status)
+  const isRequesting = geoState.status === 'requesting'
+  const isGranted = geoState.status === 'granted'
+  const isDeniedOrUnavailable = geoState.status === 'denied' || geoState.status === 'unavailable'
+
+  return (
+    <section className="arc-card" style={{ marginBottom: 0 }}>
+      <header className="arc-header">
+        {isGranted ? (
+          <MapPin className="arc-header-icon" aria-hidden="true" />
+        ) : (
+          <MapPinOff className="arc-header-icon" aria-hidden="true" />
+        )}
+        <h2 className="arc-header-title">Lokasi GPS</h2>
+      </header>
+
+      <div className="arc-body" style={{ gap: '12px' }}>
+        <StatusBadge tone={tone}>
+          {isRequesting && <Spinner size="sm" label="" />}
+          {' '}{getGeoStatusText(geoState.status)}
+        </StatusBadge>
+
+        {isGranted && (
+          <dl className="arc-meta-list">
+            <div className="arc-meta-row">
+              <dt>Latitude</dt>
+              <dd><strong className="arc-meta-time">{geoState.latitude?.toFixed(6)}</strong></dd>
+            </div>
+            <div className="arc-meta-row">
+              <dt>Longitude</dt>
+              <dd><strong className="arc-meta-time">{geoState.longitude?.toFixed(6)}</strong></dd>
+            </div>
+            {geoState.accuracy != null && (
+              <div className="arc-meta-row">
+                <dt>Akurasi</dt>
+                <dd><StatusBadge tone={geoState.accuracy <= 50 ? 'success' : 'warning'}>±{Math.round(geoState.accuracy)} m</StatusBadge></dd>
+              </div>
+            )}
+          </dl>
+        )}
+
+        {geoState.error && (
+          <p style={{ fontSize: '13px', color: 'var(--color-danger, #e53e3e)', margin: 0 }}>
+            {geoState.error}
+          </p>
+        )}
+
+        {!isGranted && !isRequesting && (
+          <Button
+            icon={MapPin}
+            isLoading={isRequesting}
+            loadingText="Mengambil lokasi..."
+            onClick={onRequest}
+            variant={isDeniedOrUnavailable ? 'secondary' : 'primary'}
+          >
+            {isDeniedOrUnavailable ? 'Coba Lagi' : 'Izinkan Lokasi'}
+          </Button>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function ProgressBar({ steps }) {
+  const completedCount = steps.filter((s) => s.complete).length
+  const fillPercent = steps.length > 1
+    ? (completedCount / (steps.length - 1)) * 100
+    : 0
+  const firstIncomplete = steps.findIndex((s) => !s.complete)
+  const activeIndex = firstIncomplete === -1 ? steps.length - 1 : firstIncomplete
+
+  return (
+    <div className="progress-bar-container">
+      <div className="progress-bar-labels">
+        {steps.map((step, i) => (
+          <span
+            className={`progress-bar-label ${step.complete ? 'complete' : i === activeIndex ? 'active' : ''}`}
+            key={step.label}
+          >
+            {step.label}
+          </span>
+        ))}
+      </div>
+      <div className="progress-bar-track">
+        <div
+          className="progress-bar-fill"
+          style={{ width: `${Math.min(fillPercent, 100)}%` }}
+        />
+      </div>
+      <div className="progress-bar-dots">
+        {steps.map((step, i) => (
+          <span
+            className={`progress-bar-dot ${step.complete ? 'complete' : i === activeIndex ? 'active' : ''}`}
+            key={step.label}
+          >
+            <span className="progress-bar-dot-inner" />
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AttendanceSection({ children, className = '', description, title }) {
+  return (
+    <section className={`attendance-flat-section ${className}`.trim()}>
+      {title || description ? (
+        <header className="attendance-flat-header">
+          {title ? <h2>{title}</h2> : null}
+          {description ? <p>{description}</p> : null}
+        </header>
+      ) : null}
+      <div className="attendance-flat-body">{children}</div>
+    </section>
+  )
+}
+
+function AttendanceInfoTile({ children, label }) {
+  return (
+    <div className="attendance-info-tile">
+      <span>{label}</span>
+      {children}
+    </div>
+  )
+}
+
+function FaceScanStartImage() {
+  return (
+    <img
+      alt=""
+      aria-hidden="true"
+      className="h-auto w-[min(240px,68vw)] max-w-full object-contain"
+      src={faceScanPlaceholder}
+    />
+  )
+}
+
+// ── Model Loading Splash ───────────────────────────────────────────────────
+function ModelLoadingSplash({ progress, error }) {
+  return (
+    <div className="aml-splash" role="status" aria-label="Memuat sistem pengenalan wajah">
+      <div className="aml-splash-card">
+        <div className="aml-splash-icon" aria-hidden="true">
+          {error ? (
+            <ScanFace className="h-10 w-10 stroke-[1.5] text-brand-danger" />
+          ) : (
+            <ScanFace className="h-10 w-10 stroke-[1.5] text-brand-primary" />
+          )}
+        </div>
+        <div className="aml-splash-copy">
+          <strong className="aml-splash-title">
+            {error ? 'Gagal Memuat Sistem' : 'Menyiapkan Sistem Absensi'}
+          </strong>
+          <p className="aml-splash-desc">
+            {error
+              ? error
+              : 'Harap tunggu, model pengenalan wajah sedang dimuat...'}
+          </p>
+        </div>
+        {!error && (
+          <div className="aml-progress-wrap" aria-hidden="true">
+            <div className="aml-progress-track">
+              <div
+                className="aml-progress-fill"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="aml-progress-label">{progress}%</span>
+          </div>
+        )}
+        {error && (
+          <button
+            className="aml-reload-btn"
+            onClick={() => window.location.reload()}
+            type="button"
+          >
+            Muat Ulang Halaman
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AttendanceResultCard({ attendanceLabel, saveStatus, verificationStatus, verifiedEmployee, now }) {
+  // ── Success state ─────────────────────────────────────────────
+  if (saveStatus === 'success') {
+    return (
+      <section className="arc-card arc-card--success">
+        <div className="arc-success-icon" aria-hidden="true">
+          <CheckCircle2 className="h-7 w-7 stroke-[1.8]" />
+        </div>
+        <div className="arc-success-body">
+          <p className="arc-success-title">Absensi Berhasil!</p>
+          <strong className="arc-success-name">{verifiedEmployee?.name || '—'}</strong>
+          <p className="arc-success-meta">
+            {attendanceLabel}
+            {' · '}
+            {formatTime(now)}
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  // ── Verified state ────────────────────────────────────────────
+  if (verificationStatus === 'verified' && verifiedEmployee) {
+    return (
+      <section className="arc-card">
+        <header className="arc-header">
+          <UserCheck className="arc-header-icon" aria-hidden="true" />
+          <h2 className="arc-header-title">Hasil Verifikasi</h2>
+        </header>
+        <div className="arc-body">
+          <StatusBadge tone="success">Wajah Terverifikasi</StatusBadge>
+          <div className="arc-identity">
+            <p className="arc-identity-name">{verifiedEmployee.name}</p>
+            <p className="arc-identity-id">ID: {verifiedEmployee.id || '—'}</p>
+          </div>
+          <dl className="arc-meta-list">
+            <div className="arc-meta-row">
+              <dt>Jenis</dt>
+              <dd><StatusBadge tone="info">{attendanceLabel}</StatusBadge></dd>
+            </div>
+            <div className="arc-meta-row">
+              <dt>Waktu</dt>
+              <dd><strong className="arc-meta-time">{formatTime(now)}</strong></dd>
+            </div>
+            <div className="arc-meta-row">
+              <dt>Status</dt>
+              <dd><StatusBadge tone="warning">Belum Disimpan</StatusBadge></dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+    )
+  }
+
+  // ── Idle / failed state ───────────────────────────────────────
+  return (
+    <section className="arc-card arc-card--idle">
+      <header className="arc-header">
+        <UserCheck className="arc-header-icon" aria-hidden="true" />
+        <h2 className="arc-header-title">Hasil Verifikasi</h2>
+      </header>
+      <div className="arc-idle-body">
+        <span className="arc-idle-icon" aria-hidden="true">
+          <ScanFace className="h-8 w-8 stroke-[1.5] text-brand-muted" />
+        </span>
+        <p className="arc-idle-text">
+          Belum ada data. Aktifkan kamera dan lakukan scan wajah untuk memulai proses absensi.
+        </p>
+      </div>
+    </section>
+  )
+}
+
 function AttendancePage() {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const cameraInFlightRef = useRef(false)
   const scanInFlightRef = useRef(false)
   const saveInFlightRef = useRef(false)
+
+  const { geoState, requestLocation } = useGeolocation()
 
   const [selectedAttendanceType, setSelectedAttendanceType] = useState('masuk')
   const [cameraStatus, setCameraStatus] = useState('inactive')
@@ -184,10 +466,13 @@ function AttendancePage() {
 
   const [now, setNow] = useState(() => new Date())
   const [isModelLoading, setIsModelLoading] = useState(true)
+  const [modelLoadProgress, setModelLoadProgress] = useState(0)
   const [isStartingCamera, setIsStartingCamera] = useState(false)
   const [modelError, setModelError] = useState('')
   const [scanDescriptor, setScanDescriptor] = useState(null)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  const isLocationGranted = geoState.status === 'granted'
 
   const attendanceLabel = getAttendanceLabel(selectedAttendanceType)
   const attendanceActionLabel = getAttendanceActionLabel(selectedAttendanceType)
@@ -199,12 +484,14 @@ function AttendancePage() {
     && !modelError
     && !isProcessing
     && saveStatus !== 'success'
+    && isLocationGranted
   const canSave = verificationStatus === 'verified'
     && Boolean(selectedAttendanceType)
     && Boolean(verifiedEmployee)
     && Boolean(scanDescriptor)
     && saveStatus !== 'saving'
     && saveStatus !== 'success'
+    && isLocationGranted
   const hasScanProgress = scanStatus !== 'idle'
     || verificationStatus !== 'idle'
     || saveStatus !== 'idle'
@@ -221,16 +508,21 @@ function AttendancePage() {
 
     async function loadModels() {
       setIsModelLoading(true)
+      setModelLoadProgress(10)
       setModelError('')
 
       try {
         const faceapi = await loadFaceApi()
+        setModelLoadProgress(30)
 
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ])
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL)
+        setModelLoadProgress(55)
+
+        await faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL)
+        setModelLoadProgress(80)
+
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        setModelLoadProgress(100)
       } catch (err) {
         if (isCurrent) {
           const message = getErrorMessage(err, 'Model wajah gagal dimuat. Silakan muat ulang halaman.')
@@ -354,6 +646,10 @@ function AttendancePage() {
 
   async function handleStartScan() {
     if (scanInFlightRef.current || !canScan) {
+      if (!isLocationGranted) {
+        showFeedback('Izinkan akses lokasi terlebih dahulu sebelum scan wajah.', 'error')
+        return
+      }
       if (cameraStatus !== 'active') {
         showFeedback('Aktifkan kamera sebelum scan wajah.', 'error')
       }
@@ -479,6 +775,8 @@ function AttendancePage() {
         descriptor: scanDescriptor,
         employeeId: verifiedEmployee.id,
         method: 'Face Recognition',
+        latitude: geoState.latitude,
+        longitude: geoState.longitude,
       }
 
       if (selectedAttendanceType === 'masuk') {
@@ -512,157 +810,83 @@ function AttendancePage() {
     }
   }
 
-  const statusSummaries = [
-    {
-      label: 'Status Kamera',
-      text: getCameraStatusText(cameraStatus, isStartingCamera),
-      tone: getCameraStatusTone(cameraStatus, isStartingCamera),
-    },
-    {
-      label: 'Status Deteksi',
-      text: getScanStatusText(scanStatus, isModelLoading, modelError),
-      tone: getScanStatusTone(scanStatus, isModelLoading, modelError),
-    },
-    {
-      label: 'Status Verifikasi',
-      text: getVerificationStatusText(verificationStatus),
-      tone: getVerificationStatusTone(verificationStatus),
-    },
-    {
-      label: 'Status Absensi',
-      text: getSaveStatusText(saveStatus),
-      tone: getSaveStatusTone(saveStatus),
-    },
-  ]
+
 
   const stepItems = [
     { complete: Boolean(selectedAttendanceType), label: 'Pilih Jenis' },
+    { complete: isLocationGranted, label: 'Lokasi' },
     { complete: cameraStatus === 'active', label: 'Kamera' },
     { complete: scanStatus === 'face_detected', label: 'Scan' },
     { complete: verificationStatus === 'verified', label: 'Verifikasi' },
     { complete: saveStatus === 'success', label: 'Simpan' },
   ]
-  const firstIncompleteStep = stepItems.findIndex((step) => !step.complete)
-  const activeStepIndex = firstIncompleteStep === -1
-    ? stepItems.length - 1
-    : firstIncompleteStep
-  const resultVerificationText = verificationStatus === 'verified'
-    ? 'Terverifikasi'
-    : 'Menunggu'
-  const resultVerificationTone = verificationStatus === 'verified'
-    ? 'success'
-    : 'warning'
+
+  if (isModelLoading || modelError) {
+    return (
+      <ModelLoadingSplash
+        error={modelError}
+        progress={modelLoadProgress}
+      />
+    )
+  }
 
   return (
     <main className="employee-attendance-page mx-auto grid min-h-[100svh] w-full max-w-[480px] content-start gap-4 bg-brand-page p-4 sm:max-w-[760px] sm:p-6 md:max-w-[1120px] md:gap-6 md:p-[32px_var(--page-gutter-desktop)]">
-      <section className="grid gap-4 rounded-[var(--radius-lg)] border border-brand-border bg-brand-white p-4 shadow-[var(--shadow-soft)] md:flex md:items-start md:justify-between md:gap-6 md:p-7">
-        <div className="grid grid-cols-[46px_minmax(0,1fr)] items-start gap-3">
-          <span className="grid h-[46px] w-[46px] place-items-center rounded-[var(--radius-md)] bg-brand-yellow text-brand-brown shadow-[var(--shadow-subtle)]">
-            <ScanFace aria-hidden="true" className="h-[23px] w-[23px] stroke-[2.4]" />
+      <section className="attendance-hero">
+        <div className="attendance-hero-title">
+          <span className="attendance-hero-icon">
+            <ScanFace aria-hidden="true" className="h-[23px] w-[23px] stroke-[1.8]" />
           </span>
-          <div>
-            <h1 className="mb-1.5 text-[28px] leading-tight text-brand-brown sm:text-[34px]">
-              Absensi Pegawai
-            </h1>
-            <p className="mb-0 text-brand-brown-muted">
-              Tanpa login. Pilih jenis absensi, lalu lakukan scan wajah.
-            </p>
-          </div>
+          <h1 className="attendance-hero-heading">
+            Absensi Pegawai
+          </h1>
         </div>
         <div
-          className="grid min-w-0 gap-2 rounded-[var(--radius-md)] border border-brand-border-strong bg-brand-yellow-soft p-3.5 text-left md:min-w-[260px] md:text-right"
+          className="attendance-clock-strip"
           aria-label="Tanggal dan waktu saat ini"
         >
-          <div className="flex min-w-0 items-center gap-2">
-            <CalendarDays aria-hidden="true" className="h-[17px] w-[17px] flex-none stroke-[2.4] text-brand-brown" />
-            <span className="min-w-0 text-sm font-bold text-brand-brown-muted">
-              {formatDate(now)}
-            </span>
+          <div className="attendance-clock-date">
+            <CalendarDays aria-hidden="true" className="attendance-clock-icon" />
+            <span>{formatDate(now)}</span>
           </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <Clock3 aria-hidden="true" className="h-[17px] w-[17px] flex-none stroke-[2.4] text-brand-brown" />
-            <strong className="min-w-0 text-2xl leading-none text-brand-brown">
-              {formatTime(now)}
-            </strong>
+          <div className="attendance-clock-time">
+            <Clock3 aria-hidden="true" className="attendance-clock-icon" />
+            <strong>{formatTime(now)}</strong>
           </div>
         </div>
       </section>
 
-      <section className="rounded-[var(--radius-md)] border border-brand-border bg-brand-white p-2 shadow-[var(--shadow-subtle)] sm:p-3">
-        <ol className="grid grid-cols-5 gap-1 p-0 sm:gap-2" aria-label="Tahapan absensi">
-          {stepItems.map((step, index) => {
-            const isActive = index === activeStepIndex
+      {/* Horizontal progress bar replacing the old step badges */}
+      <ProgressBar steps={stepItems} />
 
-            return (
-              <li
-                className={`grid min-w-0 justify-items-center gap-1 rounded-[var(--radius-sm)] border px-1 py-2 text-center sm:px-1.5 ${
-                  step.complete
-                    ? 'border-brand-yellow bg-brand-yellow-soft text-brand-brown'
-                    : isActive
-                      ? 'border-brand-border-strong bg-brand-page text-brand-brown'
-                      : 'border-brand-border bg-brand-white text-brand-brown-muted'
-                }`}
-                key={step.label}
-              >
-                <span
-                  className={`grid h-6 w-6 place-items-center rounded-full text-xs font-extrabold ${
-                    step.complete
-                      ? 'bg-brand-yellow text-brand-brown'
-                      : 'bg-brand-page text-brand-brown-muted'
-                  }`}
-                >
-                  {index + 1}
-                </span>
-                <span className="min-w-0 max-w-full break-words text-[10px] font-extrabold leading-tight sm:text-xs">
-                  {step.label}
-                </span>
-              </li>
-            )
-          })}
-        </ol>
-      </section>
+      <div
+        className="grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted p-1"
+        role="group"
+        aria-label="Pilih jenis absensi"
+      >
+        {attendanceOptions.map((option) => {
+          const Icon = option.icon
+          const isSelected = selectedAttendanceType === option.value
 
-      <section className="grid gap-4 rounded-[var(--radius-lg)] border border-brand-border-strong bg-brand-white p-4 shadow-[var(--shadow-soft)] md:flex md:items-center md:justify-between md:gap-5 md:p-6">
-        <div>
-          <h2 className="mb-2 text-[22px] text-brand-brown md:text-2xl">
-            Pilih Jenis Absensi
-          </h2>
-          <p className="mb-0 text-brand-brown-muted">
-            Tentukan jenis absensi yang akan dicatat sebelum melakukan scan wajah.
-          </p>
-          <p className="mb-0 mt-2 text-sm font-extrabold text-brand-brown">
-            Anda memilih: {attendanceLabel}
-          </p>
-        </div>
-        <div
-          className="grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-1"
-          role="group"
-          aria-label="Pilih jenis absensi"
-        >
-          {attendanceOptions.map((option) => {
-            const Icon = option.icon
-            const isSelected = selectedAttendanceType === option.value
-
-            return (
-              <button
-                aria-pressed={isSelected}
-                className={`grid min-h-[46px] min-w-0 grid-cols-[18px_minmax(0,auto)] place-content-center items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-[15px] font-extrabold transition-[background,border-color] ${
-                  isSelected
-                    ? 'border-brand-yellow bg-brand-yellow text-brand-brown shadow-[var(--shadow-subtle)]'
-                    : 'border-transparent bg-transparent text-brand-brown-muted hover:border-brand-border hover:bg-brand-white hover:text-brand-brown'
-                }`}
-                disabled={isProcessing}
-                key={option.value}
-                onClick={() => handleAttendanceTypeChange(option.value)}
-                type="button"
-              >
-                <Icon aria-hidden="true" className="h-[18px] w-[18px] stroke-[2.4]" />
-                <span className="min-w-0 break-words">{option.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </section>
+          return (
+            <button
+              aria-pressed={isSelected}
+              className={`grid min-h-[46px] min-w-0 grid-cols-[18px_minmax(0,auto)] place-content-center items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-[15px] font-extrabold transition-[background,border-color] ${
+                isSelected
+                  ? 'border-brand-blue bg-brand-blue text-white shadow-[var(--shadow-subtle)]'
+                  : 'border-transparent bg-transparent text-brand-muted hover:border-brand-border hover:bg-brand-white hover:text-brand-heading'
+              }`}
+              disabled={isProcessing}
+              key={option.value}
+              onClick={() => handleAttendanceTypeChange(option.value)}
+              type="button"
+            >
+              <Icon aria-hidden="true" className="h-[18px] w-[18px] stroke-[1.8]" />
+              <span className="min-w-0 break-words">{option.label}</span>
+            </button>
+          )
+        })}
+      </div>
 
       {feedbackMessage ? (
         <AlertBanner
@@ -673,10 +897,13 @@ function AttendancePage() {
       ) : null}
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
-        <Card className="border-[#f1d37a]" title="Area Scan Wajah">
+        <AttendanceSection
+          className="attendance-scan-section"
+          title="Area Scan Wajah"
+        >
           <div className="grid gap-[18px]">
             <div
-              className="relative grid min-h-[320px] place-items-center overflow-hidden rounded-[var(--radius-md)] border-2 border-dashed border-brand-yellow bg-brand-yellow-soft md:min-h-[420px]"
+              className="relative grid min-h-[320px] place-items-center overflow-hidden rounded-[var(--radius-md)] border border-brand-border bg-brand-white md:min-h-[420px]"
               aria-label="Area Scan Wajah"
             >
               <video
@@ -687,23 +914,30 @@ function AttendancePage() {
                 playsInline
                 ref={videoRef}
               />
+              {/* Oval face guide — shown when camera active and not scanning */}
+              {cameraStatus === 'active' && !isScanningOrVerifying ? (
+                <div className="afc-guide" aria-hidden="true">
+                  <div className="afc-oval" />
+                  <span className="afc-guide-label">Posisikan wajah di dalam area</span>
+                </div>
+              ) : null}
               {cameraStatus !== 'active' || isScanningOrVerifying ? (
-                <div className="absolute inset-0 grid place-items-center bg-brand-yellow-soft/95 p-4 text-center">
+                <div className="absolute inset-0 grid place-items-center bg-brand-white/95 p-4 text-center">
                   <div className="grid justify-items-center gap-2">
-                    <div
-                      className="grid aspect-square w-[min(190px,62vw)] place-items-center rounded-[var(--radius-md)] border-[5px] border-brand-yellow bg-brand-white shadow-[var(--shadow-subtle)]"
-                      aria-hidden="true"
-                    >
-                      {isScanningOrVerifying ? (
+                    {isScanningOrVerifying ? (
+                      <div
+                        className="grid aspect-square w-[min(160px,52vw)] place-items-center rounded-[var(--radius-md)] bg-brand-white shadow-[var(--shadow-subtle)]"
+                        aria-hidden="true"
+                      >
                         <Spinner size="lg" label="Memindai wajah..." />
-                      ) : (
-                        <ScanFace className="h-[58px] w-[58px] stroke-[1.9] text-brand-brown" />
-                      )}
-                    </div>
-                    <strong className="text-xl text-brand-brown">
+                      </div>
+                    ) : (
+                      <FaceScanStartImage />
+                    )}
+                    <strong className="text-xl text-brand-heading">
                       {isScanningOrVerifying ? 'Memindai...' : getCameraStatusText(cameraStatus, isStartingCamera)}
                     </strong>
-                    <span className="text-sm font-bold text-brand-brown-muted">
+                    <span className="text-sm font-bold text-brand-muted">
                       {isScanningOrVerifying
                         ? getVerificationStatusText(verificationStatus)
                         : getScanStatusText(scanStatus, isModelLoading, modelError)}
@@ -795,64 +1029,22 @@ function AttendancePage() {
                 </Button>
               ) : null}
 
-              {isProcessing ? (
-                <Button disabled icon={LogIn} variant="secondary">
-                  Portal Admin
-                </Button>
-              ) : (
-                <Button as={Link} icon={LogIn} to="/admin/login" variant="secondary">
-                  Portal Admin
-                </Button>
-              )}
             </div>
           </div>
-        </Card>
+        </AttendanceSection>
 
         <div className="grid content-start gap-4">
-          <Card title="Status Absensi">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {statusSummaries.map((item) => (
-                <div
-                  className="grid min-h-[88px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5"
-                  key={item.label}
-                >
-                  <span className="text-[13px] font-extrabold text-brand-brown-muted">
-                    {item.label}
-                  </span>
-                  <StatusBadge tone={item.tone}>{item.text}</StatusBadge>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card title="Hasil Verifikasi">
-            <div className="grid grid-cols-1 gap-3">
-              <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-                <span className="text-[13px] font-extrabold text-brand-brown-muted">Nama Pegawai</span>
-                <strong className="text-base text-brand-brown">{verifiedEmployee?.name || '-'}</strong>
-              </div>
-              <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-                <span className="text-[13px] font-extrabold text-brand-brown-muted">ID Pegawai</span>
-                <strong className="text-base text-brand-brown">{verifiedEmployee?.id || '-'}</strong>
-              </div>
-              <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-                <span className="text-[13px] font-extrabold text-brand-brown-muted">Jenis Absensi</span>
-                <StatusBadge>{attendanceLabel}</StatusBadge>
-              </div>
-              <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-                <span className="text-[13px] font-extrabold text-brand-brown-muted">Status Verifikasi</span>
-                <StatusBadge tone={resultVerificationTone}>
-                  {resultVerificationText}
-                </StatusBadge>
-              </div>
-              <div className="grid min-h-[78px] content-center gap-2 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-3.5">
-                <span className="text-[13px] font-extrabold text-brand-brown-muted">Status Absensi</span>
-                <StatusBadge tone={getSaveStatusTone(saveStatus)}>
-                  {getSaveStatusText(saveStatus)}
-                </StatusBadge>
-              </div>
-            </div>
-          </Card>
+          <LocationStatusCard
+            geoState={geoState}
+            onRequest={requestLocation}
+          />
+          <AttendanceResultCard
+            attendanceLabel={attendanceLabel}
+            saveStatus={saveStatus}
+            verificationStatus={verificationStatus}
+            verifiedEmployee={verifiedEmployee}
+            now={now}
+          />
         </div>
       </section>
 

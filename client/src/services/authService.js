@@ -22,6 +22,18 @@ import { apiFetch } from './apiClient'
 
 const STORAGE_KEY = 'absensi_auth'
 
+function getLoginErrorMessage(error) {
+  if (error?.status === 0) {
+    return 'Server belum merespons. Pastikan backend berjalan lalu coba lagi.'
+  }
+
+  if (error?.status === 503) {
+    return 'Login admin belum dapat diproses. Periksa koneksi database Supabase dan pastikan tabel users sudah tersedia.'
+  }
+
+  return error?.message || 'Login gagal. Silakan coba lagi.'
+}
+
 /**
  * Read the stored session from localStorage.
  * @returns {{ user: object, token: string } | null}
@@ -79,11 +91,17 @@ async function login(username, password) {
     throw new Error('Silakan isi username dan password')
   }
 
-  const response = await apiFetch('/api/auth/login', {
-    method: 'POST',
-    body: { username, password },
-    auth: false,
-  })
+  let response
+
+  try {
+    response = await apiFetch('/api/auth/login', {
+      method: 'POST',
+      body: { username, password },
+      auth: false,
+    })
+  } catch (error) {
+    throw new Error(getLoginErrorMessage(error))
+  }
 
   return {
     user: response.data.user,

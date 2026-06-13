@@ -1,46 +1,85 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { X } from 'lucide-react'
 import absensikuLogo from '../../assets/absensiku-logo.png'
 import { useAuth } from '../../contexts'
 import { navigationItems } from '../../routes/navigation'
 
-function Sidebar() {
+const navPastelColors = {
+  '/admin/dashboard': 'bg-pastel-yellow',
+  '/admin/pegawai': 'bg-pastel-green',
+  '/admin/registrasi-wajah': 'bg-pastel-pink',
+  '/admin/laporan': 'bg-pastel-purple',
+  '/admin/login': 'bg-pastel-red',
+}
+
+function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate()
   const { logout } = useAuth()
 
   function handleNavClick(event, item) {
-    // Intercept the admin logout nav item to clear the session.
     if (item.path === '/admin/login') {
       event.preventDefault()
       logout()
       navigate('/admin/login', { replace: true })
     }
+    // Close drawer on mobile after navigating
+    onClose?.()
   }
 
   return (
     <aside
-      className="flex w-full max-w-[100vw] min-w-0 flex-col gap-4 overflow-x-hidden border-b border-brand-border bg-brand-white p-[var(--space-md)_var(--page-gutter)] text-brand-brown md:gap-[34px] md:border-b-0 md:border-r md:p-7"
+      className={[
+        // Base layout
+        'flex shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden',
+        'border-brand-border bg-brand-white text-brand-heading',
+        'p-[var(--space-md)_var(--space-md)]',
+        // Mobile/tablet: fixed overlay drawer
+        'admin-mobile-sidebar fixed inset-y-0 left-0 z-40 w-[280px] shadow-[var(--shadow-soft)]',
+        'transition-transform duration-300 ease-in-out',
+        isOpen ? 'translate-x-0' : '-translate-x-full',
+        // Desktop: static sidebar that can be toggled by the burger button
+        isOpen ? 'md:relative md:flex md:h-auto md:translate-x-0' : 'md:hidden',
+        'md:z-auto md:w-[280px] md:gap-[34px] md:border-r md:border-b-0 md:p-7 md:shadow-none md:transition-none',
+      ].join(' ')}
       aria-label="Navigasi panel admin"
     >
-      <div className="flex w-full min-w-0 items-center gap-[14px] border-b border-brand-border bg-transparent pb-4">
+      {/* Header: logo + close button (mobile only) */}
+      <div className="admin-sidebar-header flex w-full min-w-0 items-center gap-3 border-b border-brand-border bg-transparent pb-4">
         <img
-          className="block max-h-14 w-full max-w-[190px] object-contain object-left md:max-h-[62px] md:max-w-[210px]"
+          className="block max-h-14 w-full max-w-[180px] object-contain object-left md:max-h-[56px] md:max-w-[200px]"
           src={absensikuLogo}
           alt="AbsensiKu"
         />
+        {/* Close button — mobile only */}
+        <button
+          aria-label="Tutup menu"
+          className="admin-sidebar-close ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted text-brand-heading transition-colors hover:bg-brand-primary-soft md:hidden"
+          onClick={onClose}
+          type="button"
+        >
+          <X aria-hidden="true" className="h-[18px] w-[18px] stroke-[1.8]" />
+        </button>
       </div>
-      <nav className="flex w-full max-w-full min-w-0 gap-2 overflow-x-auto overscroll-x-contain pb-1 [-webkit-overflow-scrolling:touch] md:grid md:grid-cols-1 md:overflow-x-visible md:pb-0">
+
+      {/* Navigation */}
+      <nav
+        aria-label="Menu utama admin"
+        className="flex w-full min-w-0 max-w-full flex-col gap-1.5"
+      >
         {navigationItems.map((item) => {
           const Icon = item.icon
+          const pastelBg = navPastelColors[item.path] || 'bg-brand-surface-muted'
 
           return (
             <NavLink
               className={({ isActive }) =>
                 [
-                  'group grid min-h-[52px] max-w-[calc(100vw-(var(--page-gutter)*2))] shrink-0 basis-[min(172px,calc(100vw-(var(--page-gutter)*2)))] grid-cols-[34px_minmax(0,1fr)] items-center gap-2 rounded-[var(--radius-md)] border p-3 no-underline md:max-w-none md:basis-auto',
-                  'text-brand-brown',
+                  'group grid min-h-[52px] w-full grid-cols-[34px_minmax(0,1fr)] items-center gap-2.5 rounded-[var(--radius-md)] border p-3 no-underline transition-colors duration-150',
                   isActive
-                    ? 'border-brand-yellow bg-brand-yellow text-brand-brown'
-                    : 'border-transparent hover:border-[#f1dca2] hover:bg-brand-yellow-soft hover:text-brand-brown',
+                    // Active: yellow background, DARK text (accessibility)
+                    ? 'border-brand-primary bg-brand-primary text-brand-heading'
+                    // Hover: soft yellow tint, always dark text
+                    : 'border-transparent text-brand-heading hover:border-brand-primary-soft hover:bg-brand-primary-soft hover:text-brand-heading',
                 ].join(' ')
               }
               key={item.path}
@@ -49,31 +88,25 @@ function Sidebar() {
             >
               {({ isActive }) => (
                 <>
+                  {/* Icon container */}
                   <span
-                    className={`grid h-[34px] w-[34px] place-items-center rounded-[var(--radius-sm)] text-brand-brown ${
+                    className={`grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[var(--radius-sm)] text-brand-heading transition-colors ${
                       isActive
-                        ? 'bg-[rgba(58,36,24,0.12)]'
-                        : 'bg-[var(--color-warning-soft)] group-hover:bg-[rgba(58,36,24,0.12)]'
+                        ? 'bg-black/10'           // dark overlay on yellow bg
+                        : `${pastelBg} group-hover:bg-black/10`
                     }`}
                   >
                     <Icon
                       aria-hidden="true"
-                      className="h-[18px] w-[18px] stroke-[2.4]"
+                      className="h-[18px] w-[18px] stroke-[1.8]"
                     />
                   </span>
+
+                  {/* Label */}
                   <span className="grid min-w-0 gap-[3px]">
-                    <span className="text-[15px] font-extrabold">
+                    <span className="text-[15px] font-extrabold leading-snug">
                       {item.label}
                     </span>
-                    <small
-                      className={`hidden text-xs leading-[1.35] md:block ${
-                        isActive
-                          ? 'text-brand-brown'
-                          : 'text-brand-brown-muted group-hover:text-brand-brown'
-                      }`}
-                    >
-                      {item.description}
-                    </small>
                   </span>
                 </>
               )}

@@ -16,10 +16,10 @@ function LandingPage() {
           alt="AbsensiKu"
         />
         <div className="grid gap-3">
-          <h1 className="mb-0 max-w-[680px] text-[clamp(30px,8vw,42px)] leading-tight text-brand-brown md:text-[40px]">
+          <h1 className="mb-0 max-w-[680px] text-[clamp(30px,8vw,42px)] leading-tight text-brand-heading md:text-[40px]">
             Sistem Absensi Pegawai
           </h1>
-          <p className="mb-0 max-w-[620px] text-[15px] text-brand-brown-muted md:text-[17px]">
+          <p className="mb-0 max-w-[620px] text-[15px] text-brand-muted md:text-[17px]">
             Admin masuk untuk mengelola sistem. Pegawai langsung melakukan absensi wajah tanpa login.
           </p>
         </div>
@@ -27,19 +27,19 @@ function LandingPage() {
 
       <section className="w-full max-w-[430px] md:max-w-[460px]" aria-label="Pilihan akses">
         <Card
-          className="w-full border-brand-border-strong"
+          className="w-full border-brand-border"
           description="Pilih jalur sesuai peran pengguna."
           title="Pilih Jalur Akses"
         >
           <div className="grid gap-3">
-            <article className="grid gap-3 rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-4">
+            <article className="grid gap-3 rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted p-4">
               <div className="grid grid-cols-[42px_minmax(0,1fr)] gap-3">
-                <span className="grid h-[42px] w-[42px] place-items-center rounded-[var(--radius-md)] bg-brand-yellow text-brand-brown shadow-[var(--shadow-subtle)]">
-                  <ShieldCheck aria-hidden="true" className="h-[21px] w-[21px] stroke-[2.4]" />
+                <span className="grid h-[42px] w-[42px] place-items-center rounded-[var(--radius-md)] bg-brand-blue text-white shadow-[var(--shadow-subtle)]">
+                  <ShieldCheck aria-hidden="true" className="h-[21px] w-[21px] stroke-[1.8]" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="mb-1 text-[20px] leading-tight text-brand-brown">Login Admin</h2>
-                  <p className="mb-0 text-sm font-semibold leading-relaxed text-brand-brown-muted">
+                  <h2 className="mb-1 text-[20px] leading-tight text-brand-heading">Login Admin</h2>
+                  <p className="mb-0 text-sm font-semibold leading-relaxed text-brand-muted">
                     Gunakan username dan password admin untuk membuka dashboard pengelolaan.
                   </p>
                 </div>
@@ -49,14 +49,14 @@ function LandingPage() {
               </Button>
             </article>
 
-            <article className="grid gap-3 rounded-[var(--radius-md)] border border-[#f1d37a] bg-brand-yellow-soft p-4">
+            <article className="grid gap-3 rounded-[var(--radius-md)] border border-brand-border-strong bg-brand-blue-soft p-4">
               <div className="grid grid-cols-[42px_minmax(0,1fr)] gap-3">
-                <span className="grid h-[42px] w-[42px] place-items-center rounded-[var(--radius-md)] bg-brand-white text-brand-brown shadow-[var(--shadow-subtle)]">
-                  <UserCheck aria-hidden="true" className="h-[21px] w-[21px] stroke-[2.4]" />
+                <span className="grid h-[42px] w-[42px] place-items-center rounded-[var(--radius-md)] bg-brand-white text-brand-heading shadow-[var(--shadow-subtle)]">
+                  <UserCheck aria-hidden="true" className="h-[21px] w-[21px] stroke-[1.8]" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="mb-1 text-[20px] leading-tight text-brand-brown">Absensi Pegawai</h2>
-                  <p className="mb-0 text-sm font-semibold leading-relaxed text-brand-brown-muted">
+                  <h2 className="mb-1 text-[20px] leading-tight text-brand-heading">Absensi Pegawai</h2>
+                  <p className="mb-0 text-sm font-semibold leading-relaxed text-brand-muted">
                     Langsung buka halaman scan wajah. Pegawai tidak perlu username dan password.
                   </p>
                 </div>

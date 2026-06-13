@@ -106,14 +106,14 @@
   height: 34px;
   place-items: center;
   border-radius: var(--radius-sm);
-  color: var(--color-primary-contrast);
-  background: var(--color-warning-soft);
+  color: var(--color-heading);
+  background: var(--color-surface-muted);
 }
 
 .admin-nav-icon svg {
   width: 18px;
   height: 18px;
-  stroke-width: 2.4;
+  stroke-width: 1.8;
 }
 
 .admin-nav-copy {
@@ -135,8 +135,8 @@
 }
 
 .admin-nav-link:hover {
-  border-color: #f1dca2;
-  color: var(--color-primary-contrast);
+  border-color: var(--color-primary-soft);
+  color: var(--color-primary);
   background: var(--color-primary-soft);
 }
 
@@ -148,12 +148,12 @@
 
 .admin-nav-link.active .admin-nav-icon,
 .admin-nav-link:hover .admin-nav-icon {
-  background: rgba(58, 36, 24, 0.12);
+  background: var(--color-overlay-light, rgba(17, 24, 39, 0.12));
 }
 
 .admin-nav-link.active small,
 .admin-nav-link:hover small {
-  color: var(--color-primary-contrast);
+  color: inherit;
 }
 
 .admin-workspace {
@@ -175,7 +175,7 @@
   padding: var(--space-md) var(--page-gutter);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
-  box-shadow: 0 1px 0 rgba(58, 36, 24, 0.04);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }
 
 .admin-topbar strong {
@@ -200,10 +200,10 @@
   align-items: center;
   justify-content: center;
   padding: 7px 12px;
-  border: 1px solid #f1d37a;
+  border: 1px solid var(--color-info-border);
   border-radius: var(--radius-md);
-  color: var(--color-primary-contrast);
-  background: var(--color-primary-soft);
+  color: var(--color-info);
+  background: var(--color-info-soft);
   font-size: 14px;
   font-weight: 800;
   white-space: nowrap;
@@ -223,6 +223,37 @@
 .admin-content > * {
   max-width: 100%;
   min-width: 0;
+}
+
+@media (max-width: 767px) {
+  /* Keep the off-canvas drawer inside the mobile safe area. */
+  .admin-mobile-sidebar {
+    width: 80%;
+    max-width: 320px;
+    z-index: 100;
+    position: fixed;
+  }
+
+  /* Make the drawer header a stable containing block for the close action. */
+  .admin-sidebar-header {
+    position: relative;
+    min-height: 48px;
+    padding-right: 52px;
+  }
+
+  /* Pin the close button safely inside the white sidebar, away from the backdrop edge. */
+  .admin-sidebar-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 101;
+    margin-left: 0;
+  }
+
+  /* Keep backdrop below the drawer and close button. */
+  .admin-sidebar-backdrop {
+    z-index: 90;
+  }
 }
 
 @media (min-width: 900px) {

@@ -1,5 +1,6 @@
 const { env, supabase } = require('../config')
 const faceService = require('./faceService')
+const geoService = require('./geoService')
 
 const FACE_RECOGNITION_METHOD = 'Face Recognition'
 const ACTIVE_EMPLOYEE_STATUS = 'Aktif'
@@ -52,13 +53,6 @@ function getJakartaParts() {
   }
 }
 
-function getAttendanceStatus(time) {
-  const seconds = getTimeSeconds(time)
-  const { lateAfterSeconds } = getAttendanceSchedule()
-
-  return seconds > lateAfterSeconds ? 'Terlambat' : 'Hadir'
-}
-
 function getTimeSeconds(time) {
   const [hour = 0, minute = 0, second = 0] = time
     .split(':')
@@ -70,49 +64,18 @@ function getTimeSeconds(time) {
 function getAttendanceSchedule() {
   return {
     openTime: env.attendance.openTime,
-    checkInNormalUntilTime: env.attendance.checkInNormalUntilTime,
-    lateToleranceMinutes: env.attendance.lateToleranceMinutes,
-    lateAfterTime: env.attendance.lateAfterTime,
-    checkOutTime: env.attendance.checkOutTime,
     closeTime: env.attendance.closeTime,
     openSeconds: getTimeSeconds(env.attendance.openTime),
-    checkInNormalUntilSeconds: getTimeSeconds(env.attendance.checkInNormalUntilTime),
-    lateAfterSeconds: getTimeSeconds(env.attendance.lateAfterTime),
-    checkOutSeconds: getTimeSeconds(env.attendance.checkOutTime),
     closeSeconds: getTimeSeconds(env.attendance.closeTime),
   }
 }
 
-function assertCheckInWindow(time) {
+function assertAttendanceWindow(time) {
   const seconds = getTimeSeconds(time)
   const { closeSeconds, closeTime, openSeconds, openTime } = getAttendanceSchedule()
 
   if (seconds < openSeconds) {
     throw createHttpError(`Absensi belum dibuka. Silakan mulai pukul ${openTime} WIB.`, 403)
-  }
-
-  if (seconds > closeSeconds) {
-    throw createHttpError(`Absensi sudah ditutup pukul ${closeTime} WIB. Silakan hubungi admin.`, 403)
-  }
-}
-
-function assertCheckOutWindow(time) {
-  const seconds = getTimeSeconds(time)
-  const {
-    checkOutSeconds,
-    checkOutTime,
-    closeSeconds,
-    closeTime,
-    openSeconds,
-    openTime,
-  } = getAttendanceSchedule()
-
-  if (seconds < openSeconds) {
-    throw createHttpError(`Absensi belum dibuka. Silakan mulai pukul ${openTime} WIB.`, 403)
-  }
-
-  if (seconds < checkOutSeconds) {
-    throw createHttpError(`Absensi pulang belum dibuka. Silakan mulai pukul ${checkOutTime} WIB.`, 403)
   }
 
   if (seconds > closeSeconds) {
@@ -129,6 +92,9 @@ function toAttendanceRecord(row) {
     checkOut: row.jam_keluar,
     status: row.status,
     method: row.metode,
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
+    locationNote: row.location_note ?? null,
   }
 }
 
@@ -173,7 +139,7 @@ async function resolveEmployeeForAttendance(payload = {}) {
 async function getTodayRecord(employeeId, date) {
   const { data, error } = await supabase
     .from('absensi')
-    .select('id, pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode')
+    .select('id, pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode, latitude, longitude, location_note')
     .eq('pegawai_id', employeeId)
     .eq('tanggal', date)
     .maybeSingle()
@@ -191,7 +157,12 @@ async function checkIn(payload = {}) {
   const method = normalizeMethod(payload.method)
   const { date, time } = getJakartaParts()
 
-  assertCheckInWindow(time)
+  assertAttendanceWindow(time)
+
+  // Validasi geolocation — wajib ada koordinat, dan harus dalam radius kantor
+  const latitude = typeof payload.latitude === 'number' ? payload.latitude : null
+  const longitude = typeof payload.longitude === 'number' ? payload.longitude : null
+  geoService.assertWithinOffice({ latitude, longitude })
 
   const employeeId = await resolveEmployeeForAttendance(payload)
 
@@ -203,16 +174,23 @@ async function checkIn(payload = {}) {
     throw createHttpError('Pegawai sudah melakukan absensi masuk hari ini', 409)
   }
 
+  const locationNote = env.office.configured
+    ? 'Dalam radius kantor'
+    : 'Geolocation tidak dikonfigurasi'
+
   if (existing) {
     const { data, error } = await supabase
       .from('absensi')
       .update({
         jam_masuk: time,
         metode: method,
-        status: getAttendanceStatus(time),
+        status: 'Hadir',
+        latitude,
+        longitude,
+        location_note: locationNote,
       })
       .eq('id', existing.id)
-      .select('id, pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode')
+      .select('id, pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode, latitude, longitude, location_note')
       .single()
 
     if (error) {
@@ -228,10 +206,13 @@ async function checkIn(payload = {}) {
       jam_masuk: time,
       metode: method,
       pegawai_id: employeeId,
-      status: getAttendanceStatus(time),
+      status: 'Hadir',
       tanggal: date,
+      latitude,
+      longitude,
+      location_note: locationNote,
     })
-    .select('id, pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode')
+    .select('id, pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode, latitude, longitude, location_note')
     .single()
 
   if (error) {
@@ -247,7 +228,12 @@ async function checkOut(payload = {}) {
   const method = normalizeMethod(payload.method)
   const { date, time } = getJakartaParts()
 
-  assertCheckOutWindow(time)
+  assertAttendanceWindow(time)
+
+  // Validasi geolocation — wajib ada koordinat, dan harus dalam radius kantor
+  const latitude = typeof payload.latitude === 'number' ? payload.latitude : null
+  const longitude = typeof payload.longitude === 'number' ? payload.longitude : null
+  geoService.assertWithinOffice({ latitude, longitude })
 
   const employeeId = await resolveEmployeeForAttendance(payload)
 
@@ -270,7 +256,7 @@ async function checkOut(payload = {}) {
       metode: method,
     })
     .eq('id', existing.id)
-    .select('id, pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode')
+    .select('id, pegawai_id, tanggal, jam_masuk, jam_keluar, status, metode, latitude, longitude, location_note')
     .single()
 
   if (error) {

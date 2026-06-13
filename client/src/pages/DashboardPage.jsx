@@ -3,19 +3,13 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
-  FileText,
   LayoutDashboard,
   LogIn,
   LogOut,
-  ScanFace,
-  UserPlus,
   UsersRound,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import {
   AlertBanner,
-  Button,
-  Card,
   MetricCard,
   PageHeader,
   Skeleton,
@@ -131,18 +125,18 @@ function CompactSection({ children, defaultOpen = false, meta, title }) {
     >
       <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_22px] items-center gap-3 bg-brand-white p-4 sm:p-5">
         <span>
-          <strong className="mb-1 block text-xl leading-tight text-brand-brown">
+          <strong className="mb-1 block text-xl leading-tight text-brand-heading">
             {title}
           </strong>
           {meta ? (
-            <small className="block text-[13px] font-bold leading-snug text-brand-brown-muted">
+            <small className="block text-[13px] font-bold leading-snug text-brand-muted">
               {meta}
             </small>
           ) : null}
         </span>
         <ChevronDown
           aria-hidden="true"
-          className="h-5 w-5 text-brand-brown transition-transform group-open:rotate-180"
+          className="h-5 w-5 stroke-[1.8] text-brand-heading transition-transform group-open:rotate-180"
         />
       </summary>
       <div className="grid gap-3 bg-brand-white px-4 pb-4 sm:px-5 sm:pb-5">
@@ -156,7 +150,7 @@ function DashboardSkeleton() {
   return (
     <div className="mx-auto grid w-full max-w-[1180px] min-w-0 gap-5">
       <PageHeader
-        description="Selamat datang, Admin. Pantau kehadiran tim hari ini dengan ringkas."
+        description="Pantau Kehadiran Tim Hari Ini."
         icon={LayoutDashboard}
         title="Dashboard"
       />
@@ -172,14 +166,6 @@ function DashboardSkeleton() {
         <Skeleton variant="metric" count={1} />
       </section>
 
-      <Card title="Aksi cepat" description="Memuat aksi cepat...">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Skeleton variant="card" className="!h-[68px]" />
-          <Skeleton variant="card" className="!h-[68px]" />
-          <Skeleton variant="card" className="!h-[68px]" />
-        </div>
-      </Card>
-
       <section className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
         <Skeleton variant="card" className="!h-[200px]" />
         <Skeleton variant="card" className="!h-[200px]" />
@@ -190,7 +176,6 @@ function DashboardSkeleton() {
 
 function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [activeEmployees, setActiveEmployees] = useState([])
   const [todayReports, setTodayReports] = useState([])
@@ -204,8 +189,6 @@ function DashboardPage() {
 
     if (showSkeleton) {
       setIsLoading(true)
-    } else {
-      setIsRefreshing(true)
     }
 
     try {
@@ -222,7 +205,6 @@ function DashboardPage() {
       setError(err.message || 'Gagal memuat data dashboard')
     } finally {
       setIsLoading(false)
-      setIsRefreshing(false)
     }
   }, [])
 
@@ -251,43 +233,43 @@ function DashboardPage() {
       description: 'Pegawai aktif yang tercatat di database.',
       icon: UsersRound,
       label: 'Total Pegawai',
+      pastel: 'blue',
       value: activeEmployees.length,
     },
     {
       description: 'Pegawai masuk dalam batas normal dan toleransi.',
       icon: CheckCircle2,
       label: 'Hadir',
+      pastel: 'green',
       value: dashboardSummary.hadir,
     },
     {
       description: 'Pegawai masuk setelah batas toleransi.',
       icon: Clock3,
       label: 'Terlambat',
+      pastel: 'purple',
       value: dashboardSummary.terlambat,
     },
     {
       description: 'Pegawai yang sudah melakukan absensi pulang.',
       icon: LogOut,
       label: 'Pulang',
+      pastel: 'cyan',
       value: dashboardSummary.pulang,
     },
     {
       description: 'Pegawai aktif yang belum punya absensi hari ini.',
       icon: LogIn,
       label: 'Belum Absen',
+      pastel: 'red',
       value: dashboardSummary.belumAbsen,
     },
-  ]
-  const quickActions = [
-    { icon: UserPlus, label: 'Tambah Pegawai', to: '/admin/pegawai/tambah' },
-    { icon: ScanFace, label: 'Registrasi Wajah', to: '/admin/registrasi-wajah' },
-    { icon: FileText, label: 'Lihat Laporan', to: '/admin/laporan' },
   ]
 
   return (
     <div className="mx-auto grid w-full max-w-[1180px] min-w-0 gap-5">
       <PageHeader
-        description="Selamat datang, Admin. Pantau kehadiran tim hari ini dengan ringkas."
+        description="Pantau Kehadiran Tim Hari Ini."
         icon={LayoutDashboard}
         title="Dashboard"
       />
@@ -310,41 +292,11 @@ function DashboardPage() {
             icon={metric.icon}
             key={metric.label}
             label={metric.label}
+            pastel={metric.pastel}
             value={metric.value}
           />
         ))}
       </section>
-
-      <Card
-        actions={
-          <Button
-            disabled={isRefreshing}
-            isLoading={isRefreshing}
-            loadingText="Memuat..."
-            onClick={() => fetchDashboard()}
-            variant="secondary"
-          >
-            Muat Ulang
-          </Button>
-        }
-        description="Akses tugas yang paling sering dipakai dari satu tempat."
-        title="Aksi cepat"
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {quickActions.map((action) => (
-            <Button
-              as={Link}
-              className="!min-h-[68px] !w-full !justify-start !bg-brand-page !p-3 !text-left hover:!bg-brand-yellow-soft md:!min-h-[84px] md:!flex-col md:!items-start"
-              icon={action.icon}
-              key={action.to}
-              to={action.to}
-              variant="secondary"
-            >
-              {action.label}
-            </Button>
-          ))}
-        </div>
-      </Card>
 
       <section className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.7fr)]">
         <CompactSection
@@ -358,7 +310,7 @@ function DashboardPage() {
             emptyMessage="Belum ada data absensi hari ini"
             getRowKey={(row) => row.id}
           />
-          <p className="rounded-[var(--radius-md)] border border-brand-border bg-brand-page px-3 py-2.5 text-[13px] font-bold text-brand-brown-muted">
+          <p className="rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted px-3 py-2.5 text-[13px] font-bold text-brand-muted">
             Buka Laporan Kehadiran untuk melihat seluruh data absensi.
           </p>
         </CompactSection>
@@ -370,17 +322,17 @@ function DashboardPage() {
           <ol className="grid gap-2.5 p-0">
             {activityPreview.map((activity, index) => (
               <li
-                className="grid min-h-[46px] grid-cols-[34px_minmax(0,1fr)] items-center gap-3 font-bold text-brand-brown"
+                className="grid min-h-[46px] grid-cols-[34px_minmax(0,1fr)] items-center gap-3 font-bold text-brand-heading"
                 key={activity.id}
               >
-                <span className="grid h-[34px] w-[34px] place-items-center rounded-[var(--radius-md)] bg-brand-yellow text-[13px] font-extrabold text-brand-brown">
+                <span className="grid h-[34px] w-[34px] place-items-center rounded-[var(--radius-md)] bg-brand-primary text-[13px] font-extrabold text-brand-heading">
                   {index + 1}
                 </span>
                 {activity.employeeName} - {activity.label} {formatTime(activity.time)}
               </li>
             ))}
             {activityPreview.length === 0 ? (
-              <li className="rounded-[var(--radius-md)] border border-brand-border bg-brand-page px-3 py-2.5 text-[13px] font-bold text-brand-brown-muted">
+              <li className="rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted px-3 py-2.5 text-[13px] font-bold text-brand-muted">
                 Belum ada aktivitas hari ini.
               </li>
             ) : null}

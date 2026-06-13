@@ -56,16 +56,19 @@ CREATE TABLE IF NOT EXISTS data_wajah (
 -- Satu row = satu record absensi per hari per pegawai.
 
 CREATE TABLE IF NOT EXISTS absensi (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  pegawai_id  VARCHAR(20) NOT NULL
-                REFERENCES pegawai(id) ON DELETE CASCADE,
-  tanggal     DATE        NOT NULL DEFAULT CURRENT_DATE,
-  jam_masuk   TIME,
-  jam_keluar  TIME,
-  status      VARCHAR(20) NOT NULL DEFAULT 'Belum Absen'
-                CHECK (status IN ('Hadir', 'Terlambat', 'Izin', 'Cuti', 'Alfa', 'Belum Absen')),
-  metode      VARCHAR(30) DEFAULT 'Face Recognition',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pegawai_id    VARCHAR(20) NOT NULL
+                  REFERENCES pegawai(id) ON DELETE CASCADE,
+  tanggal       DATE        NOT NULL DEFAULT CURRENT_DATE,
+  jam_masuk     TIME,
+  jam_keluar    TIME,
+  status        VARCHAR(20) NOT NULL DEFAULT 'Belum Absen'
+                  CHECK (status IN ('Hadir', 'Terlambat', 'Izin', 'Cuti', 'Alfa', 'Belum Absen')),
+  metode        VARCHAR(30) DEFAULT 'Face Recognition',
+  latitude      NUMERIC(10, 7),
+  longitude     NUMERIC(10, 7),
+  location_note VARCHAR(100),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
 
   UNIQUE (pegawai_id, tanggal)
 );

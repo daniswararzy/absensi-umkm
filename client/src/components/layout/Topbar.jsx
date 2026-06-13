@@ -1,18 +1,18 @@
-import StatusBadge from '../ui/StatusBadge'
+import { Menu } from 'lucide-react'
 
-function Topbar() {
+function Topbar({ isSidebarOpen, onBurgerClick }) {
   return (
-    <header className="grid min-h-[72px] w-full min-w-0 max-w-full gap-3 overflow-hidden border-b border-brand-border bg-brand-white p-[var(--space-md)_var(--page-gutter)] shadow-[0_1px_0_rgba(58,36,24,0.04)] md:flex md:min-h-0 md:items-center md:justify-between md:gap-8 md:p-[18px_32px]">
-      <div className="min-w-0">
-        <p className="mb-2 text-xs font-extrabold uppercase text-brand-brown-muted">
-          Panel Admin
-        </p>
-        <strong className="block text-lg text-brand-brown">
-          Manajemen Absensi Pegawai
-        </strong>
-      </div>
-      <div className="flex min-w-0 max-w-full flex-wrap items-center justify-start gap-2 md:justify-end">
-        <StatusBadge tone="info">Admin</StatusBadge>
+    <header className="flex min-h-[64px] w-full min-w-0 max-w-full items-center overflow-hidden border-b border-brand-border bg-brand-white px-[var(--page-gutter)] py-3 shadow-[0_1px_0_rgba(17,24,39,0.04)] md:px-8 md:py-[18px]">
+      <div className="flex min-w-0 items-center gap-3">
+        <button
+          aria-label={isSidebarOpen ? 'Tutup menu navigasi' : 'Buka menu navigasi'}
+          aria-expanded={isSidebarOpen}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted text-brand-heading transition-colors hover:border-brand-primary hover:bg-brand-primary-soft"
+          onClick={onBurgerClick}
+          type="button"
+        >
+          <Menu aria-hidden="true" className="h-5 w-5 stroke-[1.8]" />
+        </button>
       </div>
     </header>
   )

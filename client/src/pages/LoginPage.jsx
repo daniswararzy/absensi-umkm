@@ -45,7 +45,7 @@ function LoginPage() {
   return (
     <main className="grid min-h-[100svh] grid-cols-1 items-center justify-items-center gap-4 bg-brand-page p-[var(--space-xl)_var(--page-gutter)] md:grid-cols-[minmax(0,0.95fr)_minmax(360px,440px)] md:justify-items-stretch md:gap-12 md:p-[48px_var(--page-gutter-desktop)]">
       <section
-        className="grid w-full max-w-[430px] content-center gap-5 self-stretch rounded-[var(--radius-lg)] border border-brand-border bg-brand-white p-5 shadow-[var(--shadow-soft)] sm:p-6 md:min-h-[560px] md:max-w-[720px]"
+        className="grid w-full max-w-[430px] content-center gap-5 self-stretch md:min-h-[560px] md:max-w-[720px]"
         aria-label="Informasi AbsensiKu"
       >
         <img
@@ -54,10 +54,10 @@ function LoginPage() {
           alt="AbsensiKu"
         />
         <div className="grid gap-3">
-          <h1 className="mb-0 max-w-[680px] text-[clamp(30px,8vw,42px)] leading-tight text-brand-brown md:text-[40px]">
+          <h1 className="mb-0 max-w-[680px] text-[clamp(30px,8vw,42px)] leading-tight text-brand-heading md:text-[40px]">
             Login Admin AbsensiKu
           </h1>
-          <p className="mb-0 max-w-[620px] text-[15px] text-brand-brown-muted md:text-[17px]">
+          <p className="mb-0 max-w-[620px] text-[15px] text-brand-muted md:text-[17px]">
             Halaman ini khusus admin. Pegawai melakukan absensi langsung dari halaman scan wajah tanpa login.
           </p>
         </div>
@@ -65,7 +65,7 @@ function LoginPage() {
 
       <section className="w-full max-w-[430px] md:max-w-[440px]" aria-label="Form login admin">
         <Card
-          className="w-full max-w-[430px] border-brand-border-strong md:max-w-[440px]"
+          className="w-full max-w-[430px] border-brand-border md:max-w-[440px]"
           description="Masukkan kredensial admin untuk membuka dashboard pengelolaan."
           title="Login Admin"
         >
@@ -86,7 +86,7 @@ function LoginPage() {
               disabled={isSubmitting}
             />
             {errorMessage ? (
-              <p className="mb-0 rounded-[var(--radius-md)] border border-[#f4b8b0] bg-[var(--color-danger-soft)] px-3 py-2.5 text-sm font-bold text-[var(--color-danger)]">
+              <p className="mb-0 rounded-[var(--radius-md)] border border-[#FCA5A5] bg-[var(--pastel-red)] px-3 py-2.5 text-sm font-bold text-[var(--color-danger)]">
                 {errorMessage}
               </p>
             ) : null}
@@ -100,10 +100,10 @@ function LoginPage() {
             </Button>
           </form>
           {SHOW_DEMO_CREDENTIALS ? (
-            <div className="mt-4 grid gap-1.5 rounded-[var(--radius-md)] border border-brand-border bg-brand-yellow-soft p-4">
-              <strong className="text-[13px] text-brand-brown">Akun demo admin</strong>
+            <div className="mt-4 grid gap-1.5 rounded-[var(--radius-md)] border border-brand-border bg-brand-blue-soft p-4">
+              <strong className="text-[13px] text-brand-heading">Akun demo admin</strong>
               <div className="grid gap-1">
-                <span className="text-xs font-semibold leading-snug text-brand-brown-muted">
+                <span className="text-xs font-semibold leading-snug text-brand-muted">
                   Admin: admin / admin
                 </span>
               </div>

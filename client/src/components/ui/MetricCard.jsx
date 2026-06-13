@@ -1,8 +1,8 @@
 import Card from './Card'
 
-function MetricCard({ className = '', description, icon: Icon, label, value }) {
+function MetricCard({ className = '', description, icon: Icon, label, pastel, value }) {
   return (
-    <Card className={`metric-card ${className}`.trim()}>
+    <Card className={`metric-card ${className}`.trim()} data-pastel={pastel}>
       <div className="metric-card-top">
         <span className="metric-card-label">
           {label}

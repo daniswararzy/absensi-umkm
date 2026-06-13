@@ -518,7 +518,7 @@ function ReportsPage() {
             />
             {reports.length > PAGE_SIZE ? (
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-sm font-bold text-brand-brown-muted">
+                <span className="text-sm font-bold text-brand-muted">
                   Menampilkan {paginatedReports.length} dari {reports.length} data
                   {' '}
                   - Halaman {currentPage} dari {totalPages}
@@ -587,7 +587,7 @@ function ReportsPage() {
 
         <textarea
           aria-label="Catatan laporan"
-          className="min-h-[260px] w-full resize-y rounded-[var(--radius-md)] border border-brand-border bg-brand-page p-4 font-mono text-sm font-semibold leading-6 text-brand-brown shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] outline-none"
+          className="min-h-[260px] w-full resize-y rounded-[var(--radius-md)] border border-brand-border bg-brand-surface-muted p-4 font-mono text-sm font-semibold leading-6 text-brand-heading shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] outline-none"
           readOnly
           value={reportNote}
         />
